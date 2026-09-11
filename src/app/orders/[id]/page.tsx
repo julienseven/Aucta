@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getOrder } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
+import { OrderActions } from '@/components/pages/order-actions';
 
 export const metadata: Metadata = { title: 'Order' };
 
@@ -46,14 +47,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="stat"><span className="label">Total</span><strong>{money(order.total)}</strong></div>
       </div>
       <p>Payment deadline {formatWhen(order.paymentDeadline)} (Jakarta).</p>
-      {order.status === 'AWAITING_PAYMENT' && buyer && (
-        <p className="notice">Payment collection is a later milestone. AUCTA has not taken payment for this order. No checkout is available on this page yet.</p>
-      )}
-      {order.status === 'AWAITING_PAYMENT' && seller && (
-        <p className="notice">The buyer still has until the deadline to pay. Payment collection is a later milestone.</p>
-      )}
+      <OrderActions order={order} buyer={buyer} seller={seller} />
       {order.status === 'PAYMENT_FAILED' && <p className="notice">Payment was not completed in time. This page does not reverse that outcome.</p>}
-      {order.status === 'PAID' && <p>Payment is recorded on the order. The seller arranges shipping.</p>}
       {order.address && (
         <section>
           <h2>Delivery</h2>
@@ -66,7 +61,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <section>
           <h2>Shipment</h2>
           <p>{order.carrier} {order.trackingNumber}</p>
-          <p className="muted">Tracking is entered by the seller. AUCTA does not verify carrier scans.</p>
+          {order.receivedAt ? <p className="muted">Received {formatWhen(order.receivedAt)} (Jakarta).</p> : <p className="muted">Tracking is entered by the seller. AUCTA does not verify carrier scans.</p>}
         </section>
       )}
       {order.review && (
@@ -76,6 +71,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <p>{order.review.text}</p>
         </section>
       )}
+      <p className="muted">Mock checkout. No money is collected. Provider-neutral SQL keeps the order of record.</p>
     </div>
   );
 }

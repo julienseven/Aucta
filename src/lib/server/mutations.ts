@@ -36,3 +36,19 @@ export function moderateListing(listingId: string, decision: string, reason: str
 export function moderateSeller(sellerId: string, decision: string, reason: string, userId: string) {
   return callRpc("moderate_seller", { p_seller_id: sellerId, p_decision: decision, p_reason: reason }, userId);
 }
+
+export function payOrder(orderId: string, idempotencyKey: string, userId: string) {
+  return callRpc("pay_order", { p_order_id: orderId, p_idempotency_key: idempotencyKey }, userId);
+}
+
+export function shipOrder(orderId: string, carrier: string, trackingNumber: string, userId: string) {
+  return callRpc("ship_order", { p_order_id: orderId, p_carrier: carrier, p_tracking: trackingNumber }, userId);
+}
+
+export function confirmReceived(orderId: string, userId: string) {
+  return callRpc("confirm_received", { p_order_id: orderId }, userId);
+}
+
+export function reviewOrder(orderId: string, rating: number, text: string, userId: string) {
+  return callRpc("review_order", { p_order_id: orderId, p_rating: rating, p_body: text }, userId);
+}

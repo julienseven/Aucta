@@ -21,7 +21,7 @@ export interface Address { name: string; phone: string; line1: string; city: str
 export interface Order {
   id: string; auctionId: string; auction: Auction; buyerId: string; sellerId: string;
   status: AuctionStatus; winningBid: number; buyerFee: number; sellerFee: number; shippingAmount: number; total: number;
-  paymentDeadline: string; createdAt: string; address?: Address; carrier?: string; trackingNumber?: string; review?: {rating: number; text: string};
+  paymentDeadline: string; createdAt: string; address?: Address; carrier?: string; trackingNumber?: string; receivedAt?: string; review?: {rating: number; text: string};
 }
 export interface AccountData { user: User; bidding: Auction[]; watching: Auction[]; orders: Order[]; notifications: Notification[]; }
 export interface SellingData { user: User; auctions: Auction[]; orders: Order[]; grossSales: number; completedAuctions: number; }

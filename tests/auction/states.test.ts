@@ -7,7 +7,7 @@ describe("explicit auction lifecycle", () => {
     for (let index = 1; index < path.length; index++) expect(() => assertTransition(path[index - 1], path[index])).not.toThrow();
   });
 
-  it.each([["PENDING_REVIEW", "REJECTED"], ["REJECTED", "DRAFT"], ["LIVE", "CANCELLED"], ["ENDED", "NO_SALE"], ["AWAITING_PAYMENT", "PAYMENT_FAILED"], ["FULFILLMENT", "DISPUTED"], ["DISPUTED", "REFUNDED"], ["DISPUTED", "FULFILLMENT"]] as const)("allows %s to %s", (from, to) => {
+  it.each([["PENDING_REVIEW", "REJECTED"], ["PENDING_REVIEW", "LIVE"], ["REJECTED", "DRAFT"], ["LIVE", "CANCELLED"], ["ENDED", "NO_SALE"], ["AWAITING_PAYMENT", "PAYMENT_FAILED"], ["FULFILLMENT", "DISPUTED"], ["DISPUTED", "REFUNDED"], ["DISPUTED", "FULFILLMENT"]] as const)("allows %s to %s", (from, to) => {
     expect(canTransition(from, to)).toBe(true);
   });
 

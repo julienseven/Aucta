@@ -1,10 +1,47 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import type { Auction } from '@/lib/domain';
 import { getSellingData } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
+import { NewListingButton } from '@/components/pages/listing-writer';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 
 export const metadata: Metadata = { title: 'Selling' };
+
+const LIVE = new Set(['LIVE', 'SCHEDULED']);
+const SOLD = new Set(['PAID', 'FULFILLMENT', 'COMPLETED']);
+const WRITER = new Set(['DRAFT', 'PENDING_REVIEW', 'REJECTED']);
+
+function lotHref(auction: Auction): string {
+  return WRITER.has(auction.status) ? `/selling/${auction.listingId}` : `/auction/${auction.slug}`;
+}
+
+function LotTable({ lots }: { lots: Auction[] }) {
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>Lot</th>
+          <th>Status</th>
+          <th>Price</th>
+          <th>Bids</th>
+          <th>Ends</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lots.map(auction => (
+          <tr key={auction.id}>
+            <td><Link href={lotHref(auction)}>{auction.title.trim() || 'Untitled draft'}</Link></td>
+            <td>{statusLabel(auction.status)}</td>
+            <td>{money(auction.currentPrice)}</td>
+            <td>{auction.bidCount}</td>
+            <td>{formatWhen(auction.endsAt)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export default async function SellingPage() {
   const result = await loadProtected('/selling', getSellingData);
@@ -25,11 +62,21 @@ export default async function SellingPage() {
           <p className="eyebrow">Sell with AUCTA</p>
           <h1 className="page-title">Selling is a separate desk.</h1>
         </header>
-        <p>AUCTA is for collectors who already look after objects carefully. Listing tools are not in this slice. When seller onboarding opens, it will live here — not as a public form on this page.</p>
-        <p><Link className="button" href="/sell">How selling works</Link></p>
+        <p>AUCTA is for collectors who already look after objects carefully. Open a seller desk from the sell page. Verification is a server decision, not a badge you assign yourself.</p>
+        <p><Link className="button" href="/sell">Open a seller desk</Link></p>
       </div>
     );
   }
+
+  const groups = [
+    { title: 'Draft', items: auctions.filter(item => item.status === 'DRAFT') },
+    { title: 'Pending review', items: auctions.filter(item => item.status === 'PENDING_REVIEW') },
+    { title: 'Rejected', items: auctions.filter(item => item.status === 'REJECTED') },
+    { title: 'Live', items: auctions.filter(item => LIVE.has(item.status)) },
+    { title: 'Sold', items: auctions.filter(item => SOLD.has(item.status)) },
+  ];
+  const grouped = new Set(groups.flatMap(group => group.items.map(item => item.id)));
+  const other = auctions.filter(item => !grouped.has(item.id));
 
   return (
     <div className="page">
@@ -37,6 +84,7 @@ export default async function SellingPage() {
         <p className="eyebrow">Seller desk</p>
         <h1 className="page-title">Your lots.</h1>
         {user.sellerVerified && <p className="badge">Verified seller</p>}
+        <div className="page-actions"><NewListingButton /></div>
       </header>
       <div className="dashboard-grid">
         <div className="stat"><span className="label">Gross sales</span><strong>{money(grossSales)}</strong></div>
@@ -46,30 +94,22 @@ export default async function SellingPage() {
       <section>
         <h2>Listings</h2>
         {auctions.length === 0 ? (
-          <p className="empty-state">No lots on this desk yet. <Link href="/sell">Read how selling works</Link>.</p>
+          <p className="empty-state">No lots on this desk yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Lot</th>
-                <th>Status</th>
-                <th>Price</th>
-                <th>Bids</th>
-                <th>Ends</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auctions.map(auction => (
-                <tr key={auction.id}>
-                  <td><Link href={`/auction/${auction.slug}`}>{auction.title}</Link></td>
-                  <td>{statusLabel(auction.status)}</td>
-                  <td>{money(auction.currentPrice)}</td>
-                  <td>{auction.bidCount}</td>
-                  <td>{formatWhen(auction.endsAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            {groups.filter(group => group.items.length > 0).map(group => (
+              <div className="desk-group" key={group.title}>
+                <h3>{group.title}</h3>
+                <LotTable lots={group.items} />
+              </div>
+            ))}
+            {other.length > 0 && (
+              <div className="desk-group">
+                <h3>Other lots</h3>
+                <LotTable lots={other} />
+              </div>
+            )}
+          </>
         )}
       </section>
       <section>

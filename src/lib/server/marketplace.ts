@@ -1,6 +1,8 @@
 import "server-only";
-import type { AccountData, AdminData, Auction, AuctionDetail, BidActivity, Notification, Order, Seller, SellingData } from "@/lib/domain";
+import type { AccountData, AdminData, Auction, AuctionDetail, BidActivity, ListingEditor, Notification, Order, Seller, SellingData } from "@/lib/domain";
 import { getCurrentUser, requireAdmin, requireUser } from "./auth";
+import { ServiceError } from "./errors";
+import { listingEditor } from "./mutations";
 import { callRpc } from "./repository";
 import { incrementFor } from "@/lib/auction/money";
 import { safeReturnPath } from "./runtime";
@@ -126,6 +128,37 @@ export async function getAdminData(): Promise<AdminData> {
 
 export async function getOrder(id: string): Promise<Order | null> {
   return (await getAccountData()).orders.find(order => order.id === id) ?? null;
+}
+
+export async function getTaxonomy(): Promise<{ id: string; slug: string; name: string }[]> {
+  const data = row(await callRpc<Row>("taxonomy", {}));
+  return rows(data.categories).map(item => ({ id: str(item.id), slug: str(item.slug), name: str(item.name) }));
+}
+
+export async function getListingEditor(id: string): Promise<ListingEditor> {
+  const user = await requireUser();
+  const data = row(await listingEditor(id, user.id));
+  if (!str(data.listing_id)) throw new ServiceError("Listing not found.", 404, "NOT_FOUND");
+  const reservePrice = data.reserve_price == null ? null : num(data.reserve_price);
+  const auction = sanitizeAuction({
+    id: data.auction_id, listing_id: data.listing_id, state: data.state, starting_price: data.starting_price,
+    current_price: data.starting_price, increment_override: data.increment_override, starts_at: data.starts_at,
+    ends_at: data.ends_at, shipping_price: data.shipping_price, sample: data.sample,
+    listing: {
+      id: data.listing_id, slug: data.slug, title: data.title, category_slug: data.category_slug, brand: data.brand,
+      description: data.description, condition: data.condition, flaws: data.flaws, provenance: data.provenance,
+      attributes: data.attributes, image_urls: data.images, sample: data.sample,
+    },
+  });
+  return {
+    listingId: auction.listingId, auctionId: str(data.auction_id, auction.id), slug: auction.slug, state: auction.status,
+    title: auction.title, categorySlug: auction.categorySlug, brand: auction.brand, description: auction.description,
+    condition: auction.condition, flaws: auction.flaws, provenance: auction.provenance, attributes: auction.attributes,
+    images: Array.isArray(data.images) ? data.images.filter((value): value is string => typeof value === "string") : auction.images,
+    startingPrice: auction.startingPrice, reservePrice,
+    incrementOverride: data.increment_override == null ? null : num(data.increment_override),
+    startsAt: auction.startsAt, endsAt: auction.endsAt, shippingPrice: auction.shippingAmount, sample: auction.sample,
+  };
 }
 
 export { getCurrentUser } from "./auth";

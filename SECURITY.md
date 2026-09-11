@@ -1,6 +1,6 @@
 # Security boundaries
 
-Actual bidding and settlement run in controlled PostgreSQL functions. Whole integer IDR, private reserve/max-bid tables, per-auction row locks, caller-scoped idempotency and unique auction orders protect the implemented auction core. Direct client writes to money, roles, verification and order status are denied. Seller/moderation/payment/fulfillment/review mutation workflows remain unimplemented; see HANDOFF.md.
+Actual bidding and settlement run in controlled PostgreSQL functions. Whole integer IDR, private reserve/max-bid tables, per-auction row locks, caller-scoped idempotency and unique auction orders protect the implemented auction core. Direct client writes to money, roles, verification and order status are denied. Listing and seller moderation writes go through `moderate_listing` / `moderate_seller` (admin-only SQL RPCs). Payment/fulfillment/review/dispute mutation workflows remain unimplemented; see HANDOFF.md.
 
 Public responses use allowlisted DTOs. Competitors' ceilings, private bidder identities, reserves and delivery addresses are not public. Signed-in users may see their own ceiling. Account/order reads are participant-scoped; admin reads require a database-controlled role. All public tables use RLS. Private functions have explicit execution grants, and untrusted roles can execute only the three read-only RLS predicates. Soft-deleted/draft lots respect visibility on public reads, bidding and watch changes.
 

@@ -31,3 +31,10 @@ export interface ListingDraft {
   attributes: Record<string, string>; images: string[]; startingPrice: number; reservePrice?: number; increment?: number;
   durationHours: number; scheduledStart?: string; shippingAmount: number; city: string;
 }
+/** Owner/admin editor DTO. Reserve stays here and is never copied onto public Auction snapshots. */
+export interface ListingEditor {
+  listingId: string; auctionId: string; slug: string; state: AuctionStatus; title: string; categorySlug: string; brand: string;
+  description: string; condition: Condition; flaws: string; provenance: string; attributes: Record<string, string>; images: string[];
+  startingPrice: number; reservePrice: number | null; incrementOverride: number | null; startsAt: string; endsAt: string;
+  shippingPrice: number; sample: boolean;
+}

@@ -8,7 +8,7 @@ export type AuctionState = typeof AUCTION_STATES[number];
 
 const transitions: Record<AuctionState, readonly AuctionState[]> = {
   DRAFT: ["PENDING_REVIEW", "CANCELLED"],
-  PENDING_REVIEW: ["SCHEDULED", "REJECTED", "CANCELLED"],
+  PENDING_REVIEW: ["SCHEDULED", "LIVE", "REJECTED", "CANCELLED"],
   REJECTED: ["DRAFT", "CANCELLED"],
   SCHEDULED: ["LIVE", "CANCELLED"],
   LIVE: ["ENDED", "CANCELLED"],

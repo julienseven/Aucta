@@ -1767,3 +1767,114 @@ body:has(.development-bar) .mobile-nav {
 @media(min-width:960px) { .auction-detail .sticky-bid { display:none; } }
 @media(max-width:959px) { .auction-object { display:contents; } .auction-detail .gallery { order:1; } .auction-summary { order:2; } .item-description { order:3; } .auction-sample { order:0; } }
 @media(max-width:374px) { .sticky-bid { gap:.4rem; } .sticky-bid .button { padding-inline:.7rem; font-size:.8rem; } .sticky-bid .countdown { font-size:.75rem; } .sticky-bid strong { font-size:.9rem; } }
+
+/* ——— Listing writer / seller desk ——— */
+
+.listing-writer {
+  width: 100%;
+  max-width: 42rem;
+  min-width: 0;
+}
+
+.listing-writer input,
+.listing-writer select,
+.listing-writer textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.image-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.image-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--ink);
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.image-choice-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 4.25rem;
+  overflow: hidden;
+  background: var(--secondary);
+}
+
+.image-choice-frame img {
+  object-fit: cover;
+}
+
+.image-choice[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+
+.writer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.moderate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+  min-width: 0;
+  width: min(18rem, 100%);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.moderate-row .field {
+  min-width: 0;
+}
+
+.moderate-row textarea.input {
+  min-height: 3.25rem;
+}
+
+.moderate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.moderate-actions .button {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.desk-group {
+  margin-top: 1.5rem;
+  min-width: 0;
+}
+
+.desk-group h2,
+.desk-group h3 {
+  margin-bottom: 0.65rem;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+@media (min-width: 430px) {
+  .image-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

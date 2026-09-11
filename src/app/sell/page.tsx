@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MARKETPLACE_CONFIG } from '@/lib/config';
 import { getCurrentUser } from '@/lib/server/marketplace';
+import { SellerApplyForm } from '@/components/pages/seller-apply-form';
 
 export const metadata: Metadata = { title: 'Sell with AUCTA' };
 
@@ -14,12 +15,12 @@ export default async function SellPage() {
       <header className="page-header">
         <p className="eyebrow">Something special in your collection?</p>
         <h1 className="page-title">Let the right people find it.</h1>
-        <p>AUCTA is an auction floor for considered objects — watches, cameras, cards, sneakers, design, gaming and related lots. Listing tools are not on this page yet.</p>
+        <p>AUCTA is an auction floor for considered objects — watches, cameras, cards, sneakers, design, gaming and related lots. A seller desk is where drafts are written and submitted for review. Verification is a server decision, not a badge you assign yourself.</p>
       </header>
       <div className="split">
         <section>
           <h2>Who it is for</h2>
-          <p>Sellers who can photograph honestly, describe flaws, and ship after the hammer. Verification is a server decision, not a badge you assign yourself.</p>
+          <p>Sellers who can photograph honestly, describe flaws, and ship after the hammer. Opening a desk only asks AUCTA to look; it does not verify you and it does not put an object in the catalogue.</p>
           <h2>How a sale is meant to run</h2>
           <p>You consign an object. AUCTA reviews it. If it is scheduled, collectors bid in public increments with private maximums. If it sells, an order is opened with a payment window. You ship. The buyer confirms. Reviews belong to completed trades only.</p>
         </section>
@@ -33,11 +34,14 @@ export default async function SellPage() {
         </section>
       </div>
       {(user?.role === 'seller' || user?.role === 'admin') ? (
-        <p><Link className="button" href="/selling">Go to your selling desk</Link></p>
+        <p className="page-actions"><Link className="button" href="/selling">Go to your selling desk</Link></p>
       ) : user ? (
-        <p className="notice">You are signed in as a collector. Seller onboarding and the listing writer arrive in a later milestone. There is no application form here.</p>
+        <section className="desk-group">
+          <h2>Open a seller desk</h2>
+          <SellerApplyForm />
+        </section>
       ) : (
-        <p><Link className="button" href="/sign-in?next=/sell">Sign in to continue</Link></p>
+        <p className="page-actions"><Link className="button" href="/sign-in?next=/sell">Sign in to continue</Link></p>
       )}
     </div>
   );

@@ -51,6 +51,10 @@ After all migrations, the effective public RPC grants are:
 
 The permission-hardening migration revokes default private-function execution from PUBLIC, anon and authenticated, retaining only the three RLS predicates for untrusted roles. It also enforces listing visibility on auctions and watch/bid mutations, validates closing batch limits, and prevents live lots that have not expired from crowding due scheduled starts out of the closing batch. The application uses a separate server-only service client for hosted closing and a restricted service-role transaction in local mode.
 
-Seller draft/submission, moderation decisions, payment, shipping, receipt, review and dispute mutation RPCs are not implemented yet. Their tables are scaffolding, not completed workflows. The closing operation exists, but no durable scheduler is configured.
+Seller apply/draft/submit RPCs exist. `20260911140000_moderation_mutations.sql` adds public RPCs `moderate_listing` and `moderate_seller` (execute: authenticated; `private.require_admin()` inside). Approve moves `PENDING_REVIEW` to `SCHEDULED` or `LIVE` (LIVE when start has elapsed and the lot has not expired); reject moves it to `REJECTED`. Seller approve/reject only changes `verification_status` on `pending` rows. Both call `private.audit` (writes `admin_actions` and `audit_logs`) and notify the seller user. Payment, shipping, receipt, review, dispute and suspension mutation RPCs are not implemented yet. The closing operation exists, but no durable scheduler is configured.
 
 PGlite tests execute the actual migrations under anon/authenticated/service roles. Requests within its single embedded connection are serialized; the 10/50/100-request tests are local correctness simulations, not proof of multi-connection PostgreSQL lock contention.
+
+## Seller listing mutations
+
+`20260911120000_seller_listing_mutations.sql` adds public RPCs `taxonomy()` (execute: anon, authenticated) and `apply_seller`, `save_listing_draft`, `submit_listing`, `listing_editor` (execute: authenticated). Submitted lots stay `PENDING_REVIEW` and remain out of `catalogue()` until `moderate_listing` approves them. `reserve_price` lives on `private.auction_rules` and is returned only by `listing_editor`; it is not added to `private.auction_public_json`.

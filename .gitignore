@@ -13,3 +13,6 @@ coverage/
 *.log
 .DS_Store
 supabase/.temp/
+
+.vercel
+.env*

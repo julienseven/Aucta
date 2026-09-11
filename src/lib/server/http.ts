@@ -59,9 +59,15 @@ export async function route(operation: () => Promise<Response>): Promise<Respons
 export const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid UUID");
 export const idr = z.number().int().min(1).max(1_000_000_000_000);
 export const reason = z.string().trim().min(8, "Please provide at least 8 characters of detail.").max(2000);
+export const moderateBody = z.object({
+  decision: z.enum(["approve", "reject"]),
+  reason,
+}).strict();
+
+const listingImage = z.string().max(1000).refine(value => value.startsWith("/images/") || value.startsWith("/api/uploads/"), "Choose an uploaded image.");
 
 export const listingSchema = z.object({
-  title: z.string().trim().min(5).max(160),
+  title: z.string().trim().min(5).max(140),
   category_slug: z.string().regex(/^[a-z0-9-]+$/).max(50),
   description: z.string().trim().min(20).max(10_000),
   condition: z.string().trim().min(2).max(80),
@@ -75,5 +81,23 @@ export const listingSchema = z.object({
   starts_at: z.string().datetime({ offset: true }),
   ends_at: z.string().datetime({ offset: true }),
   shipping_price: z.number().int().min(0).max(10_000_000).default(0),
-  image_url: z.string().max(1000).refine(value => value.startsWith("/images/") || value.startsWith("/api/uploads/") || /^https:\/\//.test(value), "Choose an uploaded image."),
+  images: z.array(listingImage).min(1).max(8),
 }).strict().refine(data => new Date(data.ends_at) > new Date(data.starts_at), "End time must be after the start time.");
+
+export const listingDraftSchema = z.object({
+  title: z.string().trim().max(140).optional(),
+  category_slug: z.string().regex(/^[a-z0-9-]+$/).max(50).optional(),
+  description: z.string().trim().max(10_000).optional(),
+  condition: z.string().trim().max(80).optional(),
+  flaws: z.string().trim().max(5000).optional(),
+  provenance: z.string().trim().max(5000).optional(),
+  brand: z.string().trim().max(100).optional(),
+  attributes: z.record(z.string().max(80), z.string().max(500)).optional(),
+  starting_price: idr.optional(),
+  reserve_price: idr.nullable().optional(),
+  increment_override: idr.nullable().optional(),
+  starts_at: z.string().datetime({ offset: true }).optional(),
+  ends_at: z.string().datetime({ offset: true }).optional(),
+  shipping_price: z.number().int().min(0).max(10_000_000).optional(),
+  images: z.array(listingImage).max(8).optional(),
+}).strict().refine(data => !data.starts_at || !data.ends_at || new Date(data.ends_at) > new Date(data.starts_at), "End time must be after the start time.");

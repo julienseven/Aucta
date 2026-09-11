@@ -45,3 +45,10 @@ export async function requireAdmin(): Promise<User> {
   if (user.role !== "admin") throw new ServiceError("Administrator access is required.", 403, "FORBIDDEN");
   return user;
 }
+
+export async function requireSeller(): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user) throw new ServiceError("Sign in to continue.", 401, "UNAUTHENTICATED");
+  if (user.role === "buyer") throw new ServiceError("Seller access is required.", 403, "FORBIDDEN");
+  return user;
+}

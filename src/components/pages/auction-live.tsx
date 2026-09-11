@@ -28,19 +28,19 @@ export function AuctionLive({initial,signedIn}:{initial:AuctionDetail;signedIn:b
       if(!controller.signal.aborted) setConnectionError(true);
     }
   },[initial.auction.id]);
+  const live=detail.auction.status==='LIVE';
+  const awaiting=detail.auction.status==='DRAFT'||detail.auction.status==='PENDING_REVIEW';
   useEffect(()=>{
     const update=()=>{if(document.visibilityState==='visible') void refresh();};
-    // Scope updates to this auction; poll only while visible. Supabase Realtime
-    // can later trigger the same authoritative refresh.
-    const timer=setInterval(update,5000);
-    window.addEventListener('focus',update);
-    document.addEventListener('visibilitychange',update);
-    return()=>{clearInterval(timer);active.current?.abort();window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);};
-  },[refresh]);
+    // Scope updates to this auction; poll only while LIVE and visible.
+    const timer=live?setInterval(update,5000):undefined;
+    if(!awaiting){window.addEventListener('focus',update);document.addEventListener('visibilitychange',update);}
+    return()=>{if(timer)clearInterval(timer);active.current?.abort();if(!awaiting){window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);}};
+  },[refresh,live,awaiting]);
   return <div className="auction-live">
-    {extension&&<p className="notice" role="status"><strong>Auction extended ? +2 minutes</strong><br/>A new bid arrived near the close. The countdown has been updated.</p>}
-    {connectionError&&<p className="error-banner" role="status">Live updates are temporarily unavailable. Bids are still validated by the server.</p>}
-    <BidControls auction={detail.auction} signedIn={signedIn} onAccepted={refresh}/>
+    {live&&extension&&<p className="notice" role="status"><strong>Auction extended ? +2 minutes</strong><br/>A new bid arrived near the close. The countdown has been updated.</p>}
+    {live&&connectionError&&<p className="error-banner" role="status">Live updates are temporarily unavailable. Bids are still validated by the server.</p>}
+    {live?<BidControls auction={detail.auction} signedIn={signedIn} onAccepted={refresh}/>:<p className="notice muted" role="status">{detail.auction.status==='DRAFT'?'Owner preview. This lot is still a draft. It is not live and is not in the catalogue.':detail.auction.status==='PENDING_REVIEW'?'Awaiting moderation. This lot is not live and is not in the catalogue.':'Bidding is only open while the auction is live.'}</p>}
     <section className="auction-activity">
       <h2>Bid activity</h2>
       {detail.bids.length===0?<p className="muted">No public bids yet. Opening at {money(detail.auction.startingPrice)}.</p>:<ul className="activity-list">

@@ -6,9 +6,9 @@ Rare things. Real prices. An auction-first Indonesian collectible marketplace, E
 
 A working Next.js application now provides the local foundation and auction-core slice. The user chose to keep infrastructure local: development uses PGlite and explicitly labeled, signed local identities restricted to loopback requests. Hosted Supabase authentication, a dedicated cloud project and deployment are deferred and unverified. Unrelated Project Arena infrastructure must not be repurposed.
 
-Implemented behavior includes catalogue search/filtering, auction detail, database-authoritative proxy bidding, reserve and anti-snipe rules, settlement/order creation, idempotent watchlists, scoped bid polling, and account views. Seller, admin and order pages are currently read-only; /sell explains the future seller flow. Fictional inventory and a seeded completed order are development fixtures, not evidence of a complete transaction loop.
+Implemented behavior includes catalogue search/filtering, auction detail, database-authoritative proxy bidding, reserve and anti-snipe rules, settlement/order creation, idempotent watchlists, scoped bid polling, and account views. A signed-in collector can apply for a seller desk; a seller can draft a listing, autosave it, and submit it for review. An administrator can approve or reject pending listings and seller applications with a recorded reason. Approved lots enter `SCHEDULED` or `LIVE` and then appear in the catalogue; rejected lots stay out of the catalogue and can be edited and resubmitted. Order pages remain read-only for fulfillment. Reports, disputes and account suspension have no decision endpoints yet. Fictional inventory and a seeded completed order are development fixtures, not evidence of a complete transaction loop.
 
-Seller onboarding/listing submission, moderation decisions, checkout/payment persistence, fulfillment, receipt, reviews and dispute mutations remain to be built. A durable closing scheduler and multi-connection PostgreSQL concurrency verification remain auction-core acceptance gates. See HANDOFF.md and ROADMAP.md for the detailed status and verification record.
+Checkout/payment persistence, fulfillment, receipt, reviews and dispute mutations remain to be built. A durable closing scheduler and multi-connection PostgreSQL concurrency verification remain auction-core acceptance gates. See HANDOFF.md and ROADMAP.md for the detailed status and verification record.
 
 ## Target experience
 
@@ -16,7 +16,7 @@ Discover → watch → bid → compete → win → pay → receive → review. C
 
 ## Routes
 
-`/`, `/auctions`, `/auction/[slug]`, `/sold`, `/sell`, `/watchlist`, `/account`, `/selling`, `/orders/[id]`, `/admin`, `/sign-in`, auth callbacks and the six policy pages in the brief.
+`/`, `/auctions`, `/auction/[slug]`, `/sold`, `/sell`, `/watchlist`, `/account`, `/selling`, `/selling/[id]`, `/orders/[id]`, `/admin`, `/sign-in`, auth callbacks and the six policy pages in the brief.
 
 ## Acceptance sequence
 

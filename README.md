@@ -55,6 +55,6 @@ Local production-build verification uses the same explicit local configuration (
 
 ## Current status and verification
 
-Read [HANDOFF.md](HANDOFF.md) before continuing implementation. The working local foundation and auction core do not yet include seller creation, moderation decisions or the checkout-to-review loop.
+Read [HANDOFF.md](HANDOFF.md) before continuing implementation. The working local foundation includes seller drafts/submit and audited listing/seller moderation. Checkout-to-review is not implemented.
 
 Run `npm.cmd run test:e2e` for browser regressions. It builds an isolated localhost:3100 server, uses installed Google Chrome, and creates a fresh `.local/e2e-*` database. Your default `.local/aucta-db` is preserved. Set `AUCTA_LOCAL_DATA_DIR` only to a child of `.local` when running other independent local instances. Restart the server after adding SQL migrations.

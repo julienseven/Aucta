@@ -8,7 +8,7 @@ const IDENTITIES = [
   { identity: 'buyer' as const, name: 'Nadia', role: 'Collector', note: 'Watch lots and bid.' },
   { identity: 'rival' as const, name: 'Aditya', role: 'Competing bidder', note: 'A second bidder on the same lots.' },
   { identity: 'seller' as const, name: 'Raka Studio', role: 'Seller', note: 'Seller desk and sold lots.' },
-  { identity: 'admin' as const, name: 'Admin', role: 'Administrator', note: 'Read-only moderation in this slice.' },
+  { identity: 'admin' as const, name: 'Admin', role: 'Administrator', note: 'Approve or reject listings and sellers.' },
 ];
 
 function httpUrl(value: string): boolean {

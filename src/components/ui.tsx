@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X } from './icons';
 
 export async function mutate<T = unknown>(path: string, body: unknown = {}, method = 'POST'): Promise<T> {
-  const response = await fetch(path, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const response = await fetch(path, { method, credentials:'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const result = await response.json().catch(() => ({error:'Something went wrong. Please try again.'}));
   if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : result.error?.message ?? 'The request could not be completed.');
   return result.data ?? result;

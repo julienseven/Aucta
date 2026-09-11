@@ -59,6 +59,16 @@ export async function route(operation: () => Promise<Response>): Promise<Respons
 export const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid UUID");
 export const idr = z.number().int().min(1).max(1_000_000_000_000);
 export const reason = z.string().trim().min(8, "Please provide at least 8 characters of detail.").max(2000);
+export const idempotencyKey = z.string().regex(/^[A-Za-z0-9_.:-]{8,128}$/, "An 8–128 character idempotency key is required.");
+export const payBody = z.object({ idempotencyKey }).strict();
+export const shipBody = z.object({
+  carrier: z.string().trim().min(2).max(80),
+  trackingNumber: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9 ./_-]{3,99}$/, "A tracking number of 4–100 letters, digits or common separators is required."),
+}).strict();
+export const reviewBody = z.object({
+  rating: z.number().int().min(1).max(5),
+  text: z.string().trim().min(2).max(2000),
+}).strict();
 export const moderateBody = z.object({
   decision: z.enum(["approve", "reject"]),
   reason,

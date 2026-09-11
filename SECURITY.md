@@ -1,6 +1,6 @@
 # Security boundaries
 
-Actual bidding and settlement run in controlled PostgreSQL functions. Whole integer IDR, private reserve/max-bid tables, per-auction row locks, caller-scoped idempotency and unique auction orders protect the implemented auction core. Direct client writes to money, roles, verification and order status are denied. Listing and seller moderation writes go through `moderate_listing` / `moderate_seller` (admin-only SQL RPCs). Payment/fulfillment/review/dispute mutation workflows remain unimplemented; see HANDOFF.md.
+Actual bidding and settlement run in controlled PostgreSQL functions. Whole integer IDR, private reserve/max-bid tables, per-auction row locks, caller-scoped idempotency and unique auction orders protect the implemented auction core. Direct client writes to money, roles, verification and order status are denied. Listing and seller moderation writes go through `moderate_listing` / `moderate_seller` (admin-only SQL RPCs). Order payment, shipping, receipt and review writes go through `pay_order` / `ship_order` / `confirm_received` / `review_order` (participant-scoped SQL RPCs). Dispute mutation workflows remain unimplemented; see HANDOFF.md.
 
 Public responses use allowlisted DTOs. Competitors' ceilings, private bidder identities, reserves and delivery addresses are not public. Signed-in users may see their own ceiling. Account/order reads are participant-scoped; admin reads require a database-controlled role. All public tables use RLS. Private functions have explicit execution grants, and untrusted roles can execute only the three read-only RLS predicates. Soft-deleted/draft lots respect visibility on public reads, bidding and watch changes.
 
@@ -8,7 +8,7 @@ Local test identities require explicit local mode, loopback application/request/
 
 The closing route requires a 32+ character CRON_SECRET bearer credential. Hosted calls use a dedicated cookie-free server service client; local calls use a serialized service-role transaction that cannot leak authority into user requests. Anonymous and ordinary authenticated database roles cannot run settle_due. A recurring scheduler is not configured yet.
 
-The mock payment provider and manual-shipping interfaces are development abstractions; there are no working checkout/payment/fulfillment endpoints yet. No real funds, wallet, escrow or delivery verification are implemented. Seed order/payment stories are fictional.
+The mock payment provider and manual-shipping interfaces are development abstractions. Local checkout writes `provider='mock'` payment rows and pending payouts through SQL; no real funds, wallet, escrow or carrier verification exist. Seed order/payment stories are fictional.
 
 The audit added executable SQL and API negative tests for helper privileges, private data, deleted/draft lots, role escalation, self-bids, inactive bidders, direct writes, closing authorization, watch retries, redirect attacks and response privacy. PGlite is actual embedded PostgreSQL but serializes operations; it does not verify concurrency across independent PostgreSQL connections.
 

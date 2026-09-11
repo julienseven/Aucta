@@ -8,7 +8,7 @@ Install pinned dependencies with `npm.cmd ci`. Copy `.env.example` to `.env.loca
 
 The database persists under `.local/aucta-db` by default. Keep `.local/` and `.env.local` out of Git. Set AUCTA_LOCAL_DATA_DIR to a child directory of .local for independent acceptance runs (an empty value uses the default); do not run concurrent application processes against one embedded database directory.
 
-`PAYMENT_PROVIDER=mock` is explicit and local only. No money is collected. The mock provider and manual-shipping interfaces exist, but checkout, payment-state persistence, fulfillment and review mutation flows are not connected yet. Seeded completed orders are fictional fixtures, not evidence of that loop working.
+`PAYMENT_PROVIDER=mock` is explicit and local only. No money is collected. Local checkout records mock payments, seller-reported shipments, receipt and reviews in SQL. Seeded completed orders are fictional fixtures, not evidence of a live payment provider.
 
 ## Future dedicated Supabase setup
 

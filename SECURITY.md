@@ -1,0 +1,15 @@
+# Security boundaries
+
+Actual bidding and settlement run in controlled PostgreSQL functions. Whole integer IDR, private reserve/max-bid tables, per-auction row locks, caller-scoped idempotency and unique auction orders protect the implemented auction core. Direct client writes to money, roles, verification and order status are denied. Seller/moderation/payment/fulfillment/review mutation workflows remain unimplemented; see HANDOFF.md.
+
+Public responses use allowlisted DTOs. Competitors' ceilings, private bidder identities, reserves and delivery addresses are not public. Signed-in users may see their own ceiling. Account/order reads are participant-scoped; admin reads require a database-controlled role. All public tables use RLS. Private functions have explicit execution grants, and untrusted roles can execute only the three read-only RLS predicates. Soft-deleted/draft lots respect visibility on public reads, bidding and watch changes.
+
+Local test identities require explicit local mode, loopback application/request/forwarding headers, and absence of hosted environment markers. HMAC-signed HTTP-only SameSite cookies expire after eight hours. Never expose local mode through a tunnel or public proxy. Supabase uses verified server getUser(), PKCE callbacks, cookie refresh and protected database role records. User metadata cannot grant permissions. Same-origin mutations, bounded JSON input, redirect validation and a process-local request budget are implemented. A shared limiter is still required for scaled production.
+
+The closing route requires a 32+ character CRON_SECRET bearer credential. Hosted calls use a dedicated cookie-free server service client; local calls use a serialized service-role transaction that cannot leak authority into user requests. Anonymous and ordinary authenticated database roles cannot run settle_due. A recurring scheduler is not configured yet.
+
+The mock payment provider and manual-shipping interfaces are development abstractions; there are no working checkout/payment/fulfillment endpoints yet. No real funds, wallet, escrow or delivery verification are implemented. Seed order/payment stories are fictional.
+
+The audit added executable SQL and API negative tests for helper privileges, private data, deleted/draft lots, role escalation, self-bids, inactive bidders, direct writes, closing authorization, watch retries, redirect attacks and response privacy. PGlite is actual embedded PostgreSQL but serializes operations; it does not verify concurrency across independent PostgreSQL connections.
+
+Outstanding launch gates: hosted RLS/advisors and Auth tests, actual multi-connection contention, durable scheduling, storage policies/upload processing, Supabase Realtime privacy, provider webhook/refund/payout workflows, distributed abuse controls, monitoring, backup/restore, SMTP and legal review. Local data and environment files are excluded from production tracing; keep .env.local/.local out of Git.

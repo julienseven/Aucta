@@ -1,0 +1,6 @@
+'use client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Heart } from './icons';
+import { mutate } from './ui';
+export function WatchButton({auctionId,watching=false,withLabel=false}:{auctionId:string;watching?:boolean;withLabel?:boolean}) {const [active,setActive]=useState(watching),[busy,setBusy]=useState(false),[error,setError]=useState('');const router=useRouter();return <span className={withLabel?'watch-with-label':'card-watch-wrap'}><button type="button" className={withLabel?'button button-outline':'card-watch'} aria-label={active?'Remove from watchlist':'Add to watchlist'} aria-pressed={active} disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await mutate('/api/watchlist',{auctionId,watching:!active});setActive(!active);router.refresh();}catch(e){const message=(e as Error).message;if(/sign|auth|session/i.test(message))router.push(`/sign-in?next=${encodeURIComponent(window.location.pathname)}`);else setError(message);}finally{setBusy(false);}}}><Heart size={18} fill={active?'currentColor':'none'}/>{withLabel&&(active?'Watching':'Watch auction')}</button>{error&&<span className="watch-error" role="alert">{error}</span>}</span>}

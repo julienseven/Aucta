@@ -1,5 +1,5 @@
 import "server-only";
-import { settleDue } from "./mutations";
+import { localServiceRpc } from "./database";
 import { localRuntimeEnabled } from "./runtime";
 
 const INTERVAL_MS = 15_000;
@@ -7,7 +7,7 @@ const globalCloser = globalThis as typeof globalThis & { auctaLocalCloser?: Retu
 
 function tick() {
   try {
-    void settleDue(50).catch(() => {
+    void localServiceRpc("settle_due", { p_limit: 50 }).catch(() => {
       console.error("local closer failed");
     });
   } catch {

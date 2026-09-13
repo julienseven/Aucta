@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ settleDue: vi.fn() }));
-vi.mock("@/lib/server/mutations", () => ({ settleDue: mocks.settleDue }));
+const mocks = vi.hoisted(() => ({ localServiceRpc: vi.fn() }));
+vi.mock("@/lib/server/database", () => ({ localServiceRpc: mocks.localServiceRpc }));
 import { startLocalCloser, stopLocalCloser } from "@/lib/server/local-closer";
 
 const secret = "local-scheduler-test-secret-at-least-32-characters";
@@ -19,7 +19,7 @@ function stubLocalRuntime() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.settleDue.mockResolvedValue({ processed: 1 });
+  mocks.localServiceRpc.mockResolvedValue({ processed: 1 });
   stopLocalCloser();
 });
 afterEach(() => {
@@ -35,7 +35,7 @@ describe("local closer cadence", () => {
     vi.stubEnv("VITEST", "");
     vi.stubEnv("AUCTA_LOCAL_CLOSER", "");
     expect(startLocalCloser()).toEqual({ started: false, reason: "disabled" });
-    expect(mocks.settleDue).not.toHaveBeenCalled();
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
   });
 
   it("does not start without CRON_SECRET of 32+", () => {
@@ -44,7 +44,7 @@ describe("local closer cadence", () => {
     vi.stubEnv("CRON_SECRET", "too-short");
     vi.stubEnv("VITEST", "");
     expect(startLocalCloser()).toEqual({ started: false, reason: "cron-secret" });
-    expect(mocks.settleDue).not.toHaveBeenCalled();
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
   });
 
   it("does not start when VITEST is set even if flag is true", () => {
@@ -53,19 +53,39 @@ describe("local closer cadence", () => {
     vi.stubEnv("CRON_SECRET", secret);
     vi.stubEnv("VITEST", "true");
     expect(startLocalCloser()).toEqual({ started: false, reason: "vitest" });
-    expect(mocks.settleDue).not.toHaveBeenCalled();
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
   });
 
-  it("starts when local runtime is enabled and ticks settleDue every 15s", async () => {
+  it("does not start when hosted markers disable local runtime", () => {
+    stubLocalRuntime();
+    vi.stubEnv("AUCTA_LOCAL_CLOSER", "true");
+    vi.stubEnv("CRON_SECRET", secret);
+    vi.stubEnv("VITEST", "");
+    vi.stubEnv("VERCEL", "1");
+    expect(startLocalCloser()).toEqual({ started: false, reason: "local-runtime" });
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
+  });
+
+  it("does not start on the edge runtime", () => {
+    stubLocalRuntime();
+    vi.stubEnv("AUCTA_LOCAL_CLOSER", "true");
+    vi.stubEnv("CRON_SECRET", secret);
+    vi.stubEnv("VITEST", "");
+    vi.stubEnv("NEXT_RUNTIME", "edge");
+    expect(startLocalCloser()).toEqual({ started: false, reason: "edge" });
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
+  });
+
+  it("starts when local runtime is enabled and ticks settle_due every 15s", async () => {
     vi.useFakeTimers();
     stubLocalRuntime();
     vi.stubEnv("AUCTA_LOCAL_CLOSER", "true");
     vi.stubEnv("CRON_SECRET", secret);
     vi.stubEnv("VITEST", "");
     expect(startLocalCloser()).toEqual({ started: true });
-    expect(mocks.settleDue).not.toHaveBeenCalled();
+    expect(mocks.localServiceRpc).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(mocks.settleDue).toHaveBeenCalledWith(50);
+    expect(mocks.localServiceRpc).toHaveBeenCalledWith("settle_due", { p_limit: 50 });
     stopLocalCloser();
   });
 });

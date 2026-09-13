@@ -2,6 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 const WATCH = 'bbbbbbbb-0000-0000-0000-000000000001';
 const WATCH_SLUG = '/auction/seiko-6139-pogue-chronograph';
+const CAMERA = 'bbbbbbbb-0000-0000-0000-000000000002';
+const CAMERA_SLUG = '/auction/hasselblad-500cm-planar';
 const origin = 'http://localhost:3100';
 async function signIn(page:Page,name:'Nadia'|'Aditya'|'Raka Studio'|'Admin',next='/account') {
   await page.goto('/sign-in?next='+encodeURIComponent(next));
@@ -185,4 +187,77 @@ test('collector can apply for a seller desk and open selling',async({page})=>{
   await expect(page).toHaveURL(origin+'/selling');
   await expect(page.locator('main')).toContainText('Your lots.');
   await expect(page.getByRole('button',{name:'New listing',exact:true})).toBeVisible();
+});
+
+test('winner can mock-pay, seller ships, buyer receives and reviews',async({page,request})=>{
+  test.setTimeout(180_000);
+  const review='Glass and body as described.';
+  await signIn(page,'Nadia',CAMERA_SLUG);
+  await expect(page.locator('h1.page-title')).toContainText('Hasselblad');
+  const maxBid=page.getByRole('button',{name:'Set max bid',exact:true});
+  if(await maxBid.isVisible()){
+    const {data}=await(await page.request.get('/api/auctions/'+CAMERA)).json();
+    const auction=data.auction;
+    if(auction.status==='LIVE'&&Date.parse(auction.endsAt)>Date.parse(auction.serverTime)+2000){
+      await maxBid.click();
+      // Seed ceiling is 9_000_000; a leader raise must exceed it and does not extend.
+      await page.getByLabel('Maximum bid (IDR)',{exact:true}).fill('10000000');
+      await page.getByRole('button',{name:'Save maximum',exact:true}).click();
+      await expect(page.getByRole('dialog')).not.toBeVisible();
+      await expect(page.locator('.bid-panel')).toContainText('Bid accepted. You are leading.');
+    }
+  }
+  await expect.poll(async()=>{
+    const {data}=await(await request.get('/api/auctions/'+CAMERA)).json();
+    const auction=data.auction;
+    return auction.status!=='LIVE'||Date.parse(auction.endsAt)<=Date.parse(auction.serverTime);
+  },{timeout:120_000}).toBe(true);
+  let closeStatus=0;
+  for(let attempt=0;attempt<5;attempt++){
+    const close=await request.post('/api/cron/close',{headers:{authorization:'Bearer '+process.env.CRON_SECRET,origin}});
+    closeStatus=close.status();
+    if(closeStatus===200){
+      const {data}=await(await request.get('/api/auctions/'+CAMERA)).json();
+      if(data.auction.status!=='LIVE') break;
+    }
+    await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  expect(closeStatus).toBe(200);
+  const settled=(await(await request.get('/api/auctions/'+CAMERA)).json()).data.auction;
+  expect(settled.status,'close returned 200 but Hasselblad produced no order (NO_SALE / no bids)').not.toBe('NO_SALE');
+  expect(settled.status,'close returned 200 but Hasselblad is still LIVE').not.toBe('LIVE');
+  await page.goto('/account');
+  const orderLink=page.locator('a[href^="/orders/"]',{hasText:'Hasselblad'});
+  await expect(orderLink,'close returned 200 but no Hasselblad order appeared').toBeVisible();
+  const href=await orderLink.getAttribute('href');
+  expect(href).toMatch(/^\/orders\/[0-9a-f-]{36}$/i);
+  const orderId=String(href).slice('/orders/'.length);
+  await orderLink.click();
+  await expect(page).toHaveURL(origin+'/orders/'+orderId);
+  await page.setViewportSize({width:320,height:900});
+  await expect(page.getByRole('button',{name:/Pay Rp/})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+  await page.getByRole('button',{name:/Pay Rp/}).click();
+  await expect(page.locator('main')).toContainText('No money is collected');
+  await expect(page.locator('main')).toContainText('Paid');
+  await expect(page.locator('main')).toContainText('Waiting on the seller to ship');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+  await page.goto('/account');
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page).toHaveURL(origin+'/');
+  await signIn(page,'Raka Studio','/orders/'+orderId);
+  await page.getByLabel('Carrier',{exact:true}).fill('JNE YES');
+  await page.getByLabel('Tracking number',{exact:true}).fill('JNE12345678');
+  await page.getByRole('button',{name:'Mark as shipped',exact:true}).click();
+  await expect(page.locator('main')).toContainText('in transit');
+  await page.goto('/account');
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page).toHaveURL(origin+'/');
+  await signIn(page,'Nadia','/orders/'+orderId);
+  await page.getByRole('button',{name:'Confirm received',exact:true}).click();
+  await expect(page.locator('#order-review')).toBeVisible();
+  await page.locator('#order-review').fill(review);
+  await page.getByRole('button',{name:'Publish review',exact:true}).click();
+  await expect(page.locator('main')).toContainText(review);
+  await expect(page.locator('main')).toContainText(/Completed|sale complete/i);
 });

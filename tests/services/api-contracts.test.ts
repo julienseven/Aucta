@@ -323,6 +323,7 @@ describe("admin moderation contracts", () => {
 
 describe("order mutation contracts", () => {
   const ctx = { params: Promise.resolve({ id }) };
+  const attacker = "https://attacker.example";
   const payKey = "aaaaaaaa-0000-0000-0000-000000000001";
   const pay = { idempotencyKey: payKey };
   const shipment = { carrier: "JNE YES", trackingNumber: "JNE12345678" };
@@ -340,12 +341,30 @@ describe("order mutation contracts", () => {
     expect((await payOrder(post("/api/orders/" + id + "/pay", { idempotencyKey: "short" }), ctx)).status).toBe(400);
     expect(mocks.callRpc).not.toHaveBeenCalled();
   });
-  it("rejects invalid order ids on pay", async () => {
-    expect((await payOrder(post("/api/orders/invalid/pay", pay), { params: Promise.resolve({ id: "invalid" }) })).status).toBe(404);
+  it("rejects invalid order ids", async () => {
+    const invalid = { params: Promise.resolve({ id: "invalid" }) };
+    expect((await payOrder(post("/api/orders/invalid/pay", pay), invalid)).status).toBe(404);
+    expect((await shipOrder(post("/api/orders/invalid/ship", shipment), invalid)).status).toBe(404);
+    expect((await receiveOrder(post("/api/orders/invalid/receive", {}), invalid)).status).toBe(404);
+    expect((await reviewOrder(post("/api/orders/invalid/review", review), invalid)).status).toBe(404);
     expect(mocks.callRpc).not.toHaveBeenCalled();
   });
-  it("rejects cross-origin pay requests before the database", async () => {
-    expect((await payOrder(post("/api/orders/" + id + "/pay", pay, "https://attacker.example"), ctx)).status).toBe(403);
+  it("rejects cross-origin order mutations before the database", async () => {
+    expect((await payOrder(post("/api/orders/" + id + "/pay", pay, attacker), ctx)).status).toBe(403);
+    expect((await shipOrder(post("/api/orders/" + id + "/ship", shipment, attacker), ctx)).status).toBe(403);
+    expect((await receiveOrder(post("/api/orders/" + id + "/receive", {}, attacker), ctx)).status).toBe(403);
+    expect((await reviewOrder(post("/api/orders/" + id + "/review", review, attacker), ctx)).status).toBe(403);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+  it("rejects unauthenticated order mutations", async () => {
+    mocks.requireUser.mockRejectedValueOnce(new ServiceError("Sign in", 401));
+    expect((await payOrder(post("/api/orders/" + id + "/pay", pay), ctx)).status).toBe(401);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+  it("rejects privileged extra fields on pay, ship, and review", async () => {
+    expect((await payOrder(post("/api/orders/" + id + "/pay", { ...pay, userId: "x", state: "PAID" }), ctx)).status).toBe(400);
+    expect((await shipOrder(post("/api/orders/" + id + "/ship", { ...shipment, tracking: "x" }), ctx)).status).toBe(400);
+    expect((await reviewOrder(post("/api/orders/" + id + "/review", { rating: 5, body: review.text }), ctx)).status).toBe(400);
     expect(mocks.callRpc).not.toHaveBeenCalled();
   });
   it("ships through ship_order", async () => {
@@ -354,11 +373,25 @@ describe("order mutation contracts", () => {
     expect(response.status).toBe(200);
     expect(mocks.callRpc).toHaveBeenCalledWith("ship_order", { p_order_id: id, p_carrier: "JNE YES", p_tracking: "JNE12345678" }, user.id);
   });
+  it("rejects invalid shipment tracking", async () => {
+    expect((await shipOrder(post("/api/orders/" + id + "/ship", { carrier: "JNE YES", trackingNumber: "ab" }), ctx)).status).toBe(400);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
   it("confirms receipt through confirm_received", async () => {
     mocks.callRpc.mockResolvedValue({ order_id: id, state: "RECEIVED" });
     const response = await receiveOrder(post("/api/orders/" + id + "/receive", {}), ctx);
     expect(response.status).toBe(200);
     expect(mocks.callRpc).toHaveBeenCalledWith("confirm_received", { p_order_id: id }, user.id);
+  });
+  it("confirms receipt without a JSON body", async () => {
+    mocks.callRpc.mockResolvedValue({ order_id: id, state: "RECEIVED" });
+    const request = new Request("http://localhost:3000/api/orders/" + id + "/receive", { method: "POST", headers: { origin: "http://localhost:3000" } });
+    expect((await receiveOrder(request, ctx)).status).toBe(200);
+    expect(mocks.callRpc).toHaveBeenCalledWith("confirm_received", { p_order_id: id }, user.id);
+  });
+  it("rejects extra keys on receive JSON", async () => {
+    expect((await receiveOrder(post("/api/orders/" + id + "/receive", { extra: true }), ctx)).status).toBe(400);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
   });
   it("reviews through review_order", async () => {
     mocks.callRpc.mockResolvedValue({ order_id: id, rating: 5 });

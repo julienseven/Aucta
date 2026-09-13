@@ -23,6 +23,10 @@ import { GET as listingEditorGet, PATCH as patchListing } from "../../src/app/ap
 import { POST as submitListing } from "../../src/app/api/listings/[id]/submit/route";
 import { POST as moderateListing } from "../../src/app/api/admin/listings/[id]/route";
 import { POST as moderateSeller } from "../../src/app/api/admin/sellers/[id]/route";
+import { POST as payOrder } from "../../src/app/api/orders/[id]/pay/route";
+import { POST as shipOrder } from "../../src/app/api/orders/[id]/ship/route";
+import { POST as receiveOrder } from "../../src/app/api/orders/[id]/receive/route";
+import { POST as reviewOrder } from "../../src/app/api/orders/[id]/review/route";
 import { POST as upload } from "../../src/app/api/uploads/route";
 import { browseAuctions, getAccountData } from "../../src/lib/server/marketplace";
 
@@ -313,6 +317,58 @@ describe("admin moderation contracts", () => {
   it("rejects invalid seller ids", async () => {
     asAdmin();
     expect((await moderateSeller(post("/api/admin/sellers/invalid", body), { params: Promise.resolve({ id: "invalid" }) })).status).toBe(404);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("order mutation contracts", () => {
+  const ctx = { params: Promise.resolve({ id }) };
+  const payKey = "aaaaaaaa-0000-0000-0000-000000000001";
+  const pay = { idempotencyKey: payKey };
+  const shipment = { carrier: "JNE YES", trackingNumber: "JNE12345678" };
+  const review = { rating: 5, text: "Packed well and as described." };
+
+  it("pays through pay_order with the verified user", async () => {
+    mocks.callRpc.mockResolvedValue({ order_id: id, state: "PAID" });
+    const response = await payOrder(post("/api/orders/" + id + "/pay", pay), ctx);
+    expect(response.status).toBe(200);
+    expect(mocks.callRpc).toHaveBeenCalledWith("pay_order", { p_order_id: id, p_idempotency_key: payKey }, user.id);
+    expect(await response.json()).toEqual({ data: { order_id: id, state: "PAID" } });
+  });
+  it("rejects missing or short pay idempotency keys", async () => {
+    expect((await payOrder(post("/api/orders/" + id + "/pay", {}), ctx)).status).toBe(400);
+    expect((await payOrder(post("/api/orders/" + id + "/pay", { idempotencyKey: "short" }), ctx)).status).toBe(400);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+  it("rejects invalid order ids on pay", async () => {
+    expect((await payOrder(post("/api/orders/invalid/pay", pay), { params: Promise.resolve({ id: "invalid" }) })).status).toBe(404);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+  it("rejects cross-origin pay requests before the database", async () => {
+    expect((await payOrder(post("/api/orders/" + id + "/pay", pay, "https://attacker.example"), ctx)).status).toBe(403);
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
+  it("ships through ship_order", async () => {
+    mocks.callRpc.mockResolvedValue({ order_id: id, state: "SHIPPED" });
+    const response = await shipOrder(post("/api/orders/" + id + "/ship", shipment), ctx);
+    expect(response.status).toBe(200);
+    expect(mocks.callRpc).toHaveBeenCalledWith("ship_order", { p_order_id: id, p_carrier: "JNE YES", p_tracking: "JNE12345678" }, user.id);
+  });
+  it("confirms receipt through confirm_received", async () => {
+    mocks.callRpc.mockResolvedValue({ order_id: id, state: "RECEIVED" });
+    const response = await receiveOrder(post("/api/orders/" + id + "/receive", {}), ctx);
+    expect(response.status).toBe(200);
+    expect(mocks.callRpc).toHaveBeenCalledWith("confirm_received", { p_order_id: id }, user.id);
+  });
+  it("reviews through review_order", async () => {
+    mocks.callRpc.mockResolvedValue({ order_id: id, rating: 5 });
+    const response = await reviewOrder(post("/api/orders/" + id + "/review", review), ctx);
+    expect(response.status).toBe(200);
+    expect(mocks.callRpc).toHaveBeenCalledWith("review_order", { p_order_id: id, p_rating: 5, p_body: "Packed well and as described." }, user.id);
+  });
+  it("rejects invalid review ratings and short text", async () => {
+    expect((await reviewOrder(post("/api/orders/" + id + "/review", { rating: 0, text: "Packed well." }), ctx)).status).toBe(400);
+    expect((await reviewOrder(post("/api/orders/" + id + "/review", { rating: 5, text: "x" }), ctx)).status).toBe(400);
     expect(mocks.callRpc).not.toHaveBeenCalled();
   });
 });

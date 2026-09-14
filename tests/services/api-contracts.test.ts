@@ -336,6 +336,13 @@ describe("order mutation contracts", () => {
     expect(mocks.callRpc).toHaveBeenCalledWith("pay_order", { p_order_id: id, p_idempotency_key: payKey }, user.id);
     expect(await response.json()).toEqual({ data: { order_id: id, state: "PAID" } });
   });
+  it("fails closed before the payment RPC for a hosted user", async () => {
+    mocks.requireUser.mockResolvedValue({ ...user, local: false });
+    const response = await payOrder(post("/api/orders/" + id + "/pay", pay), ctx);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "NOT_CONFIGURED" });
+    expect(mocks.callRpc).not.toHaveBeenCalled();
+  });
   it("rejects missing or short pay idempotency keys", async () => {
     expect((await payOrder(post("/api/orders/" + id + "/pay", {}), ctx)).status).toBe(400);
     expect((await payOrder(post("/api/orders/" + id + "/pay", { idempotencyKey: "short" }), ctx)).status).toBe(400);

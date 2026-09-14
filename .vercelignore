@@ -1,0 +1,11 @@
+.local
+.aucta
+.next
+node_modules
+test-results
+playwright-report
+coverage
+.env*
+!.env.example
+*.tsbuildinfo
+*.log

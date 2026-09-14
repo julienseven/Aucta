@@ -6,7 +6,7 @@ import type { Order } from '@/lib/domain';
 import { Feedback, mutate } from '@/components/ui';
 import { money } from './helpers';
 
-export function OrderActions({ order, buyer, seller }: { order: Order; buyer: boolean; seller: boolean }) {
+export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { order: Order; buyer: boolean; seller: boolean; mockPaymentEnabled: boolean }) {
   const router = useRouter();
   const payKey = useRef(`pay-${order.id}`);
   const [carrier, setCarrier] = useState('JNE YES');
@@ -33,6 +33,14 @@ export function OrderActions({ order, buyer, seller }: { order: Order; buyer: bo
   }
 
   if (order.status === 'AWAITING_PAYMENT' && buyer) {
+    if (!mockPaymentEnabled) {
+      return (
+        <section className="notice">
+          <h2>Payment is not available yet</h2>
+          <p>AUCTA will notify you when online payment processing is ready.</p>
+        </section>
+      );
+    }
     return (
       <section className="notice">
         <h2>Complete payment</h2>

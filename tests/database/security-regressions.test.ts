@@ -46,6 +46,13 @@ describe("SQL permission regressions", () => {
     }
   });
 
+  it("anonymous callers can execute only public read RPCs", async () => {
+    const result = await db.db.query<{ name: string }>(`select p.proname as name from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
+      and has_function_privilege('anon',p.oid,'EXECUTE') order by p.proname`);
+    expect(result.rows.map((row) => row.name)).toEqual(["auction_detail", "catalogue", "taxonomy"]);
+  });
+
   it("unpublished lots cannot be watched by other users", async () => {
     const { auction } = await fixture(db, "DRAFT");
     await expect(asUser(db, BUYER, "select public.toggle_watch($1)", [auction])).rejects.toThrow(/not available|not found|not published/i);

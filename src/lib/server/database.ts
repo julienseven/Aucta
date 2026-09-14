@@ -30,7 +30,7 @@ export function runAsService<T>(database: LocalDatabase, operation: (tx: Transac
 }
 
 /** Explicit harness factory; application code uses the guarded singleton below. */
-export async function createDatabase(options: { dataDir?: string; seed?: boolean } = {}): Promise<LocalDatabase> {
+export async function createDatabase(options: { dataDir?: string; seed?: boolean; localMockPayments?: boolean } = {}): Promise<LocalDatabase> {
   const db = new PGlite(options.dataDir ?? "memory://");
   await db.waitReady;
   await db.exec("create table if not exists public.aucta_local_migrations(name text primary key)");
@@ -50,6 +50,9 @@ export async function createDatabase(options: { dataDir?: string; seed?: boolean
     });
   }
   await db.exec("alter table public.aucta_local_migrations enable row level security; revoke all on public.aucta_local_migrations from anon, authenticated; insert into private.settings(key,value) values ('local_mode','true') on conflict(key) do nothing");
+  if (options.localMockPayments !== false) {
+    await db.exec("grant execute on function public.pay_order(uuid,text) to authenticated");
+  }
   if (options.seed && !names.has("fictional-seed-v1")) {
     await db.transaction(async (tx) => {
       await tx.exec(await readFile(path.join(process.cwd(), "supabase/seed.sql"), "utf8"));
@@ -66,7 +69,7 @@ export async function getLocalDatabase(): Promise<LocalDatabase> {
   }
   if (!globalDatabase.auctaDatabase) {
     globalDatabase.auctaDatabase = (async () => {
-      const localRoot = path.resolve(process.cwd(), ".local");
+      const localRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), ".local");
       const dataDir = path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.AUCTA_LOCAL_DATA_DIR || path.join(".local", "aucta-db"));
       const relativeDir = path.relative(localRoot, dataDir);
       if (!relativeDir || relativeDir.startsWith("..") || path.isAbsolute(relativeDir)) {

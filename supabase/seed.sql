@@ -51,7 +51,8 @@ begin
     (v_cat_cards,'cards','Trading Cards',v_now),
     (v_cat_sneakers,'sneakers','Sneakers',v_now),
     (v_cat_design,'design','Design',v_now),
-    (v_cat_gaming,'gaming','Gaming',v_now);
+    (v_cat_gaming,'gaming','Gaming',v_now)
+    on conflict (slug) do nothing;
 
   insert into public.listings(id,seller_id,category_id,brand,slug,title,description,condition,flaws,provenance,attributes,image_urls,sample,created_at,updated_at) values
     (v_list_watch,v_shop,v_cat_watches,'Seiko','seiko-6139-pogue-chronograph','Seiko 6139-6005 “Pogue” chronograph',

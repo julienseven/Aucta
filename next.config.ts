@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
   poweredByHeader: false,
-  outputFileTracingExcludes: { '/*': ['./.local/**/*', './.aucta/**/*', './.env*', './test-results/**/*', './playwright-report/**/*'] },
+  outputFileTracingExcludes: {
+    '*': ['./.local/**/*', './.aucta/**/*', './.env*', './test-results/**/*', './playwright-report/**/*'],
+    '/*': ['./.local/**/*', './.aucta/**/*', './.env*', './test-results/**/*', './playwright-report/**/*'],
+  },
   serverExternalPackages: ['@electric-sql/pglite'],
   images: { remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/**' }] },
   async headers() { return [{ source: '/(.*)', headers: [

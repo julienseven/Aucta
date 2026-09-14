@@ -140,3 +140,17 @@ describe("SQL order transaction loop", () => {
     await expect(rpc(db, SELLER, "select public.ship_order($1,$2,$3) as result", [paid, "JNE", "ab"])).rejects.toThrow(/tracking number/i);
   }, 60_000);
 });
+
+describe("hosted payment permissions", () => {
+  it("does not let authenticated clients execute the mock payment RPC", async () => {
+    const hosted = await createDatabase({ localMockPayments: false });
+    try {
+      const result = await hosted.db.query<{ allowed: boolean }>(
+        "select has_function_privilege('authenticated','public.pay_order(uuid,text)','EXECUTE') as allowed",
+      );
+      expect(result.rows[0].allowed).toBe(false);
+    } finally {
+      await hosted.db.close();
+    }
+  }, 60_000);
+});

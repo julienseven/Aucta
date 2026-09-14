@@ -47,7 +47,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="stat"><span className="label">Total</span><strong>{money(order.total)}</strong></div>
       </div>
       <p>Payment deadline {formatWhen(order.paymentDeadline)} (Jakarta).</p>
-      <OrderActions order={order} buyer={buyer} seller={seller} />
+      <OrderActions order={order} buyer={buyer} seller={seller} mockPaymentEnabled={result.user.local} />
       {order.status === 'PAYMENT_FAILED' && <p className="notice">Payment was not completed in time. This page does not reverse that outcome.</p>}
       {order.address && (
         <section>
@@ -71,7 +71,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <p>{order.review.text}</p>
         </section>
       )}
-      <p className="muted">Mock checkout. No money is collected. Provider-neutral SQL keeps the order of record.</p>
+      {result.user.local
+        ? <p className="muted">Mock checkout. No money is collected. Provider-neutral SQL keeps the order of record.</p>
+        : <p className="muted">Online payment processing is being connected. Orders cannot be marked paid until it is ready.</p>}
     </div>
   );
 }

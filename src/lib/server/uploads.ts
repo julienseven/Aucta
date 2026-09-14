@@ -9,8 +9,8 @@ const UPLOAD_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const CONTENT_TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
 
 function localUploadsDir(): string {
-  const localRoot = path.resolve(process.cwd(), ".local");
-  const dir = path.resolve(process.cwd(), ".local", "uploads");
+  const localRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), ".local");
+  const dir = path.resolve(/* turbopackIgnore: true */ process.cwd(), ".local", "uploads");
   const relative = path.relative(localRoot, dir);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new ServiceError("Upload directory is not available.", 503, "NOT_CONFIGURED");

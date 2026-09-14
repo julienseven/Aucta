@@ -6,7 +6,7 @@ Public responses use allowlisted DTOs. Competitors' ceilings, private bidder ide
 
 Local test identities require explicit local mode, loopback application/request/forwarding headers, and absence of hosted environment markers. HMAC-signed HTTP-only SameSite cookies expire after eight hours. Never expose local mode through a tunnel or public proxy. Supabase uses verified server getUser(), PKCE callbacks, cookie refresh and protected database role records. User metadata cannot grant permissions. Same-origin mutations, bounded JSON input, redirect validation and a process-local request budget are implemented. A shared limiter is still required for scaled production.
 
-The closing route requires a 32+ character CRON_SECRET bearer credential. Hosted calls use a dedicated cookie-free server service client; local calls use a serialized service-role transaction that cannot leak authority into user requests. Anonymous and ordinary authenticated database roles cannot run settle_due. A recurring scheduler is not configured yet.
+The closing route requires a 32+ character CRON_SECRET bearer credential. Hosted calls use a dedicated cookie-free server service client; local calls use a serialized service-role transaction that cannot leak authority into user requests. Anonymous and ordinary authenticated database roles cannot run settle_due. Local opt-in closer (`AUCTA_LOCAL_CLOSER=true`) calls that same service RPC without a request store; it is not a durable hosted scheduler.
 
 The mock payment provider and manual-shipping interfaces are development abstractions. Local checkout writes `provider='mock'` payment rows and pending payouts through SQL; no real funds, wallet, escrow or carrier verification exist. Seed order/payment stories are fictional.
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { E2E_CRON_SECRET } from './cron-secret';
 
 const WATCH = 'bbbbbbbb-0000-0000-0000-000000000001';
 const WATCH_SLUG = '/auction/seiko-6139-pogue-chronograph';
@@ -213,7 +214,7 @@ test('winner can mock-pay, seller ships, buyer receives and reviews',async({page
   },{timeout:120_000}).toBe(true);
   let closeStatus=0;
   for(let attempt=0;attempt<5;attempt++){
-    const close=await request.post('/api/cron/close',{headers:{authorization:'Bearer '+process.env.CRON_SECRET,origin}});
+    const close=await request.post('/api/cron/close',{headers:{authorization:'Bearer '+E2E_CRON_SECRET,origin}});
     closeStatus=close.status();
     if(closeStatus===200){
       const {data}=await(await request.get('/api/auctions/'+CAMERA)).json();

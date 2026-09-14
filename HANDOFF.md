@@ -1,6 +1,6 @@
 # AUCTA — implementation handoff
 
-Updated 12 September 2026 after M5 mock pay → ship → receive → review.
+Updated 14 September 2026 after local closer cadence, order API contracts, and browser pay→review e2e.
 
 ## User decisions that persist
 
@@ -15,7 +15,7 @@ Updated 12 September 2026 after M5 mock pay → ship → receive → review.
 | --- | --- |
 | M0 contract | Documents and domain/schema design exist. |
 | M1 foundation | Local Next.js app, PGlite migrations/seed, signed development sessions, navigation and public catalogue work. Supabase SSR/auth code is prepared; hosted auth is unverified and intentionally not provisioned. |
-| M2 auction core | SQL bidding, proxy competition, reserve, extension, idempotency, settlement/order creation, watchlists and sanitized detail work locally. Auction detail polls its own endpoint every five seconds while LIVE and visible. A protected closing endpoint exists; no durable recurring scheduler is installed. True multi-connection PostgreSQL concurrency and Supabase Realtime remain unverified. |
+| M2 auction core | SQL bidding, proxy competition, reserve, extension, idempotency, settlement/order creation, watchlists and sanitized detail work locally. Auction detail polls its own endpoint every five seconds while LIVE and visible. A protected closing endpoint exists. An opt-in process-local closer (`AUCTA_LOCAL_CLOSER=true` plus `CRON_SECRET`) ticks `settle_due` every 15s without a request store. That is not a durable hosted scheduler. True multi-connection PostgreSQL concurrency and Supabase Realtime remain unverified. |
 | M3 seller | Seller onboarding, listing drafts, autosave and submit exist locally. Submitted lots stay PENDING_REVIEW until an admin decision. |
 | M4 moderation | Admin can approve or reject listings and seller applications with a required reason. Approve publishes a lot (`SCHEDULED` or `LIVE`); reject returns it to an editable `REJECTED` state. Decisions write `admin_actions` and `audit_logs` via `private.audit` and notify the seller. Reports, disputes and account suspension still have no mutation endpoints. |
 | M5 transactions | Local mock loop is connected: `pay_order` → `ship_order` → `confirm_received` → `review_order`. SQL is the order of record (lock auction, then order). Payments persist as `provider='mock'`; payouts stay `pending`. Seeded completed orders remain fictional fixtures. Real payment providers, webhooks, refunds and payouts are not implemented. |
@@ -47,8 +47,9 @@ Updated 12 September 2026 after M5 mock pay → ship → receive → review.
 - src/components/pages/order-actions.tsx and /orders/[id] — local mock checkout, ship, receipt and review actions.
 - tests/database/security-regressions.test.ts, sql-engine.test.ts and order-mutations.test.ts — real SQL behavior/permissions under PGlite.
 - tests/services/ — request, auth, DTO and scheduler regressions.
-- tests/e2e/marketplace.spec.ts — local browser flow and responsive regressions.
-- playwright.config.ts — builds and starts an isolated server at localhost:3100 with a fresh .local/e2e-* database and generated in-memory test secret.
+- src/lib/server/local-closer.ts and src/instrumentation.ts — opt-in local closer; calls `localServiceRpc("settle_due")`, not `headers()`.
+- tests/e2e/marketplace.spec.ts — local browser flow, responsive regressions, and Hasselblad mock pay→ship→receive→review.
+- playwright.config.ts — builds and starts an isolated server at localhost:3100 with a fresh .local/e2e-* database, generated in-memory test secret, CRON_SECRET, and `AUCTA_LOCAL_CLOSER` blanked.
 
 ## Run locally
 
@@ -67,15 +68,15 @@ Browser tests use installed Google Chrome and a separate origin/database, and bu
 ## Next work in order
 
 1. Keep the current local checks green; inspect the verification results below.
-2. Complete the remaining M2 acceptance infrastructure locally: reliable independent closing cadence and real PostgreSQL multi-connection concurrency tests when a local PostgreSQL/Docker runtime is available. PGlite queues requests and cannot prove row-lock contention between database sessions. M2 closer/concurrency still unverified.
+2. Real PostgreSQL multi-connection concurrency tests when a local PostgreSQL/Docker runtime is available. PGlite queues requests and cannot prove row-lock contention. Hosted durable closing remains unverified.
 3. M6 polish (accessibility, SEO, gallery, empty/loading). Reports/disputes/suspension remain later trust-safety work. Real payment providers stay deferred under the local-only decision.
 4. Only revisit cloud setup when the user changes the local-only decision.
 
 ## Verification results
 
-- Unit/service/database tests: **223 passed across 11 files** (12 September M5 integration). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, and negative permissions under PGlite.
-- Typecheck: passed on 12 September after M5 integration.
-- Lint: full project passed on 12 September with no warnings.
-- Production build: passed on 12 September, including `/api/orders/[id]/pay|ship|receive|review`.
-- Browser verification: existing M4 scenarios still apply. A full browser pay→review loop is not yet an e2e case; SQL and API contract tests cover the mutations.
-- Hosted Supabase Auth/Realtime/Storage, durable closing, real multi-connection PostgreSQL concurrency, and live payment providers remain unverified. Reports/disputes/suspension have no mutation endpoints. Mock checkout does not collect money.
+- Unit/service/database tests: **229 passed across 12 files** (14 September). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, local closer gates, order API contracts, and negative permissions under PGlite.
+- Typecheck: passed on 14 September.
+- Lint: full project passed on 14 September with no warnings.
+- Production build: passed on 14 September, including `/api/orders/[id]/pay|ship|receive|review` and instrumentation.
+- Browser verification: **9 passed** (1.9m with `AUCTA_E2E_SKIP_BUILD=true` after a successful production build). Includes Hasselblad close → Nadia mock pay at 320px → Raka ship → Nadia receive/review. Catalogue, auth, bidding, seller draft, and admin approve still pass.
+- Hosted Supabase Auth/Realtime/Storage, durable hosted closing, real multi-connection PostgreSQL concurrency, and live payment providers remain unverified. Reports/disputes/suspension have no mutation endpoints. Mock checkout does not collect money.

@@ -2,13 +2,13 @@
 
 Rare things. Real prices. An auction-first Indonesian collectible marketplace, English first, IDR only. Watches, cameras, cards, sneakers, gaming, vintage electronics, design and art are in scope. Regulated categories, wallets, crypto, AI valuation and social feeds are excluded.
 
-## Current state — 12 September 2026
+## Current state — 14 September 2026
 
 A working Next.js application now provides the local foundation and auction-core slice. The user chose to keep infrastructure local: development uses PGlite and explicitly labeled, signed local identities restricted to loopback requests. Hosted Supabase authentication, a dedicated cloud project and deployment are deferred and unverified. Unrelated Project Arena infrastructure must not be repurposed.
 
 Implemented behavior includes catalogue search/filtering, auction detail, database-authoritative proxy bidding, reserve and anti-snipe rules, settlement/order creation, idempotent watchlists, scoped bid polling, and account views. A signed-in collector can apply for a seller desk; a seller can draft a listing, autosave it, and submit it for review. An administrator can approve or reject pending listings and seller applications with a recorded reason. Approved lots enter `SCHEDULED` or `LIVE` and then appear in the catalogue; rejected lots stay out of the catalogue and can be edited and resubmitted. After settlement, the winning buyer can record a mock payment, the seller can enter carrier/tracking, the buyer can confirm receipt and publish a review. SQL is the order of record; no money is collected. Reports, disputes and account suspension have no decision endpoints yet. Fictional inventory and a seeded completed order are development fixtures.
 
-A durable closing scheduler and multi-connection PostgreSQL concurrency verification remain auction-core acceptance gates. Real payment providers, webhooks, refunds and payouts remain to be built. See HANDOFF.md and ROADMAP.md for the detailed status and verification record.
+An opt-in process-local closer exists; a durable hosted scheduler and multi-connection PostgreSQL concurrency verification remain auction-core acceptance gates. Real payment providers, webhooks, refunds and payouts remain to be built. See HANDOFF.md and ROADMAP.md for the detailed status and verification record.
 
 ## Target experience
 

@@ -21,6 +21,6 @@ export default defineConfig({
     timeout: 900_000,
     stdout: 'pipe',
     reuseExistingServer: false,
-    env: { AUCTA_LOCAL_MODE: 'true', APP_URL: 'http://localhost:3100', LOCAL_AUTH_SECRET: randomBytes(32).toString('hex'), CRON_SECRET, PAYMENT_PROVIDER: 'mock', AUCTA_LOCAL_DATA_DIR: '.local/e2e-'+process.pid+'-'+Date.now() },
+    env: { AUCTA_LOCAL_MODE: 'true', APP_URL: 'http://localhost:3100', LOCAL_AUTH_SECRET: randomBytes(32).toString('hex'), CRON_SECRET, AUCTA_LOCAL_CLOSER: '', PAYMENT_PROVIDER: 'mock', AUCTA_LOCAL_DATA_DIR: '.local/e2e-'+process.pid+'-'+Date.now() },
   },
 });

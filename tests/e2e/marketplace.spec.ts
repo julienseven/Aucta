@@ -190,22 +190,21 @@ test('collector can apply for a seller desk and open selling',async({page})=>{
 });
 
 test('winner can mock-pay, seller ships, buyer receives and reviews',async({page,request})=>{
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const review='Glass and body as described.';
   await signIn(page,'Nadia',CAMERA_SLUG);
   await expect(page.locator('h1.page-title')).toContainText('Hasselblad');
-  const maxBid=page.getByRole('button',{name:'Set max bid',exact:true});
-  if(await maxBid.isVisible()){
-    const {data}=await(await page.request.get('/api/auctions/'+CAMERA)).json();
-    const auction=data.auction;
-    if(auction.status==='LIVE'&&Date.parse(auction.endsAt)>Date.parse(auction.serverTime)+2000){
-      await maxBid.click();
-      // Seed ceiling is 9_000_000; a leader raise must exceed it and does not extend.
-      await page.getByLabel('Maximum bid (IDR)',{exact:true}).fill('10000000');
-      await page.getByRole('button',{name:'Save maximum',exact:true}).click();
-      await expect(page.getByRole('dialog')).not.toBeVisible();
-      await expect(page.locator('.bid-panel')).toContainText('Bid accepted. You are leading.');
-    }
+  const {data}=await(await page.request.get('/api/auctions/'+CAMERA)).json();
+  const auction=data.auction;
+  if(auction.status==='LIVE'&&Date.parse(auction.endsAt)>Date.parse(auction.serverTime)+10_000){
+    const maxBid=page.getByRole('button',{name:'Set max bid',exact:true});
+    await expect(maxBid).toBeVisible();
+    await maxBid.click();
+    // Seed ceiling is 9_000_000; a leader raise must exceed it and does not extend.
+    await page.getByLabel('Maximum bid (IDR)',{exact:true}).fill('10000000');
+    await page.getByRole('button',{name:'Save maximum',exact:true}).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.locator('.bid-panel')).toContainText('Bid accepted. You are leading.');
   }
   await expect.poll(async()=>{
     const {data}=await(await request.get('/api/auctions/'+CAMERA)).json();

@@ -1,5 +1,5 @@
 'use client';
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, CONDITIONS, SORTS } from './helpers';
@@ -16,6 +16,8 @@ export type FilterValues = {
 
 export function Filters({ values, action = '/auctions', lockStatus }: { values: FilterValues; action?: string; lockStatus?: string }) {
   const router = useRouter();
+  const hasAdvanced = Boolean(values.category || values.condition || values.minPrice || values.maxPrice);
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvanced);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,20 +39,6 @@ export function Filters({ values, action = '/auctions', lockStatus }: { values: 
         <label className="field-label" htmlFor="q">Search</label>
         <input className="input" id="q" name="q" defaultValue={values.q ?? ''} placeholder="An object, a maker, a story" />
       </div>
-      <div className="filter-group">
-        <label className="field-label" htmlFor="category">Category</label>
-        <select className="input" id="category" name="category" defaultValue={values.category ?? 'all'}>
-          <option value="all">All categories</option>
-          {CATEGORIES.map(([slug, label]) => <option key={slug} value={slug}>{label}</option>)}
-        </select>
-      </div>
-      <div className="filter-group">
-        <label className="field-label" htmlFor="condition">Condition</label>
-        <select className="input" id="condition" name="condition" defaultValue={values.condition ?? 'all'}>
-          <option value="all">Any condition</option>
-          {CONDITIONS.map(condition => <option key={condition} value={condition}>{condition}</option>)}
-        </select>
-      </div>
       {!lockStatus && (
         <div className="filter-group">
           <label className="field-label" htmlFor="status">Status</label>
@@ -62,13 +50,32 @@ export function Filters({ values, action = '/auctions', lockStatus }: { values: 
           </select>
         </div>
       )}
-      <div className="filter-group">
-        <label className="field-label" htmlFor="minPrice">Min price (IDR)</label>
-        <input className="input" id="minPrice" name="minPrice" inputMode="numeric" defaultValue={values.minPrice ?? ''} placeholder="1000000" />
-      </div>
-      <div className="filter-group">
-        <label className="field-label" htmlFor="maxPrice">Max price (IDR)</label>
-        <input className="input" id="maxPrice" name="maxPrice" inputMode="numeric" defaultValue={values.maxPrice ?? ''} placeholder="25000000" />
+      <button className="filter-toggle button button-outline" type="button" aria-expanded={showAdvanced} aria-controls="advanced-filters" onClick={() => setShowAdvanced(value => !value)}>
+        {showAdvanced ? 'Fewer filters' : `More filters${hasAdvanced ? ' · active' : ''}`}
+      </button>
+      <div className={`filter-advanced ${showAdvanced ? 'is-open' : ''}`} id="advanced-filters">
+        <div className="filter-group">
+          <label className="field-label" htmlFor="category">Category</label>
+          <select className="input" id="category" name="category" defaultValue={values.category ?? 'all'}>
+            <option value="all">All categories</option>
+            {CATEGORIES.map(([slug, label]) => <option key={slug} value={slug}>{label}</option>)}
+          </select>
+        </div>
+        <div className="filter-group">
+          <label className="field-label" htmlFor="condition">Condition</label>
+          <select className="input" id="condition" name="condition" defaultValue={values.condition ?? 'all'}>
+            <option value="all">Any condition</option>
+            {CONDITIONS.map(condition => <option key={condition} value={condition}>{condition}</option>)}
+          </select>
+        </div>
+        <div className="filter-group">
+          <label className="field-label" htmlFor="minPrice">Min price (IDR)</label>
+          <input className="input" id="minPrice" name="minPrice" inputMode="numeric" defaultValue={values.minPrice ?? ''} placeholder="1000000" />
+        </div>
+        <div className="filter-group">
+          <label className="field-label" htmlFor="maxPrice">Max price (IDR)</label>
+          <input className="input" id="maxPrice" name="maxPrice" inputMode="numeric" defaultValue={values.maxPrice ?? ''} placeholder="25000000" />
+        </div>
       </div>
       <div className="filter-group">
         <label className="field-label" htmlFor="sort">Sort</label>

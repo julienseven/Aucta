@@ -36,9 +36,12 @@ export function Catalogue({
         {auctions.length === 0 && !error ? (
           <p className="empty-state">{empty}</p>
         ) : (
+          <section className="catalogue-results" aria-labelledby="result-count">
+            <p className="result-count" id="result-count">{auctions.length} {auctions.length === 1 ? 'lot' : 'lots'}</p>
           <div className="auction-grid">
             {auctions.map((auction, index) => <AuctionCard key={auction.id} auction={auction} priority={index < 2} />)}
           </div>
+          </section>
         )}
       </div>
     </div>

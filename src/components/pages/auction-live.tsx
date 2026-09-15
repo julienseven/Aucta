@@ -38,7 +38,7 @@ export function AuctionLive({initial,signedIn}:{initial:AuctionDetail;signedIn:b
     return()=>{if(timer)clearInterval(timer);active.current?.abort();if(!awaiting){window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);}};
   },[refresh,live,awaiting]);
   return <div className="auction-live">
-    {live&&extension&&<p className="notice" role="status"><strong>Auction extended ? +2 minutes</strong><br/>A new bid arrived near the close. The countdown has been updated.</p>}
+    {live&&extension&&<p className="notice" role="status"><strong>Auction extended · 2 minutes added</strong><br/>A new bid arrived near the close. The countdown has been updated.</p>}
     {live&&connectionError&&<p className="error-banner" role="status">Live updates are temporarily unavailable. Bids are still validated by the server.</p>}
     {live?<BidControls auction={detail.auction} signedIn={signedIn} onAccepted={refresh}/>:<p className="notice muted" role="status">{detail.auction.status==='DRAFT'?'Owner preview. This lot is still a draft. It is not live and is not in the catalogue.':detail.auction.status==='PENDING_REVIEW'?'Awaiting moderation. This lot is not live and is not in the catalogue.':'Bidding is only open while the auction is live.'}</p>}
     <section className="auction-activity">

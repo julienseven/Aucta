@@ -371,6 +371,16 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
   }
 
   const complete = isComplete(form);
+  const start = fromDatetimeLocal(form.starts_local);
+  const duration = Number(form.duration);
+  const requirements = [
+    { label: 'Add at least one photograph', done: form.images.length > 0, href: '#listing-images-label' },
+    { label: 'Choose a category and write a clear title', done: Boolean(form.category_slug) && form.title.trim().length >= 5, href: '#listing-category' },
+    { label: 'Describe the object in at least 20 characters', done: form.description.trim().length >= 20, href: '#listing-description' },
+    { label: 'Set a valid starting price', done: parsePrice(form.starting_price) != null, href: '#listing-starting-price' },
+    { label: 'Choose a valid start and duration', done: Boolean(start) && (DURATIONS as readonly number[]).includes(duration), href: '#listing-start' },
+  ];
+  const completedRequirements = requirements.filter(item => item.done).length;
   const pending = state === 'PENDING_REVIEW';
   const rejected = state === 'REJECTED';
 
@@ -397,6 +407,11 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
         onSubmit={event => { event.preventDefault(); if (!frozen && complete) void submit(); }}
       >
         <p className="muted">Sample photographs are fictional development imagery. AUCTA reviews every lot; submitting asks for moderation and does not publish the object.</p>
+        {!frozen && <aside className="writer-progress" aria-labelledby="writer-progress-title">
+          <div><p className="eyebrow">Draft readiness</p><h2 id="writer-progress-title">{completedRequirements} of {requirements.length} essentials complete</h2></div>
+          <div className="progress-track" aria-hidden="true"><span style={{width:`${completedRequirements / requirements.length * 100}%`}} /></div>
+          <ul>{requirements.map(item => <li key={item.label} className={item.done ? 'is-complete' : ''}><span aria-hidden="true">{item.done ? '✓' : '○'}</span>{item.done ? item.label : <a href={item.href}>{item.label}</a>}</li>)}</ul>
+        </aside>}
         <div className="field">
           <span className="field-label" id="listing-images-label">Images</span>
           <div className="image-picker" role="group" aria-labelledby="listing-images-label">

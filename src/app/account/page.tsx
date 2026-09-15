@@ -21,6 +21,12 @@ export default async function AccountPage() {
 
   const { user, bidding, watching, orders, notifications } = result.data;
   const purchases = orders.filter(order => order.buyerId === user.id);
+  const actions = [
+    ...bidding.filter(auction => auction.isLeading === false && typeof auction.ownMaximum === 'number').map(auction => ({ key: `bid-${auction.id}`, eyebrow: 'Outbid', title: auction.title, detail: `Next bid ${money(auction.minimumBid)}`, href: `/auction/${auction.slug}`, label: 'Bid again' })),
+    ...purchases.filter(order => order.status === 'AWAITING_PAYMENT').map(order => ({ key: `pay-${order.id}`, eyebrow: 'Payment due', title: order.auction.title, detail: `Pay ${money(order.total)} by ${formatWhen(order.paymentDeadline)}`, href: `/orders/${order.id}`, label: 'Open order' })),
+    ...purchases.filter(order => order.status === 'FULFILLMENT' && !order.receivedAt).map(order => ({ key: `receive-${order.id}`, eyebrow: 'In transit', title: order.auction.title, detail: order.trackingNumber ? `${order.carrier ?? 'Shipment'} · ${order.trackingNumber}` : 'Check delivery details', href: `/orders/${order.id}`, label: 'Track order' })),
+    ...purchases.filter(order => order.status === 'FULFILLMENT' && order.receivedAt && !order.review).map(order => ({ key: `review-${order.id}`, eyebrow: 'Finish the order', title: order.auction.title, detail: 'Your receipt is confirmed. Share an honest review.', href: `/orders/${order.id}`, label: 'Review seller' })),
+  ];
 
   return (
     <div className="page">
@@ -29,6 +35,13 @@ export default async function AccountPage() {
         <h1 className="page-title">Hello, {user.name.split(' ')[0]}.</h1>
         <p className="muted">{user.email ?? 'Signed in'}{user.local ? ' · Local development session' : ''}</p>
       </header>
+      {actions.length > 0 && <section className="action-required" aria-labelledby="action-required-title">
+        <div><p className="eyebrow">Next steps</p><h2 id="action-required-title">Action required.</h2></div>
+        <div className="action-list">{actions.map(action => <article key={action.key}>
+          <div><p className="eyebrow">{action.eyebrow}</p><h3>{action.title}</h3><p className="muted">{action.detail}</p></div>
+          <Link className="button" href={action.href}>{action.label}</Link>
+        </article>)}</div>
+      </section>}
       <div className="dashboard-grid">
         <div className="stat"><span className="label">Active bids</span><strong>{bidding.length}</strong></div>
         <div className="stat"><span className="label">Watching</span><strong>{watching.length}</strong></div>

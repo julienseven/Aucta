@@ -1,6 +1,12 @@
 # AUCTA — implementation handoff
 
-Updated 14 September 2026 after local closer cadence, order API contracts, and browser pay→review e2e.
+Updated 15 September 2026 after the UX principles implementation.
+
+## UX implementation checkpoint
+
+See UX_DESIGN.md for the reference-to-implementation mapping. Added a single private-maximum bid flow, semantic feedback, mobile filter disclosure, actual result counts, account next actions, order progress, receipt confirmation and truthful draft readiness. Auction summary now precedes long descriptions in document order; seller evidence and shipping sit beside the decision area.
+
+Validation: typecheck, lint, 232 unit/database/service tests and production build passed. After updating bid selectors, the complete browser suite passed all 9 scenarios, including two-bidder competition and pay-to-review. Isolated cold-start reruns timed out on auction navigation after a successful authentication response; the full suite passed in 2.9 minutes. Mobile auction capture inspected. These results do not verify hosted dependencies or establish marketplace launch readiness.
 
 ## User decisions that persist
 

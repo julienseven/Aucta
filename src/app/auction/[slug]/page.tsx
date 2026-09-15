@@ -29,6 +29,17 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
   const attributes = Object.entries(auction.attributes);
   return <article className="page auction-detail">
     {auction.sample&&<p className="notice auction-sample">Fictional development inventory. This object is not a real consignment.</p>}
+    <div className="auction-summary">
+      <p className="eyebrow">{auction.category} · {auction.brand}</p>
+      <h1 className="page-title">{auction.title}</h1>
+      {auction.subtitle&&<p>{auction.subtitle}</p>}
+      <p className="muted">{auction.condition}{auction.attributes.year?` · ${auction.attributes.year}`:''} · {statusLabel(auction.status)}</p>
+      <aside className="bid-trust" aria-label="Seller and buyer protection">
+        <p><ShieldCheck size={16}/><span><strong>{auction.seller.verified ? 'Verified seller' : 'Seller profile'}</strong><small>{auction.seller.completedSales} completed sales{auction.seller.rating != null ? ` · ${auction.seller.rating.toFixed(1)} rating` : ''}</small></span></p>
+        <p><span><strong>{money(auction.shippingAmount)} shipping</strong><small><Link href="/buyer-protection">Buyer protection</Link> · <Link href="/auction-rules">Auction rules</Link></small></span></p>
+      </aside>
+      <AuctionLive key={auction.id+':'+(user?.id??'guest')} initial={detail} signedIn={Boolean(user)}/>
+    </div>
     <div className="auction-object">
       <Gallery images={auction.images} alt={auction.imageAlt||auction.title}/>
       <section className="item-description">
@@ -38,16 +49,9 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
         <h3>Condition</h3><p>{auction.condition}. {auction.flaws||'No additional flaw notes were provided.'}</p>
         {auction.provenance&&<><h3>Provenance</h3><p>{auction.provenance}</p></>}
         {attributes.length>0&&<><h3>Details</h3><dl className="item-attributes">{attributes.map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl></>}
-        <div className="seller-card"><p className="eyebrow">Seller</p><p><strong>{auction.seller.name}</strong>{auction.seller.verified&&<span className="badge"><ShieldCheck size={14}/> Verified seller</span>}</p><p className="muted">{location||'Indonesia'}</p><p className="muted">Joined {formatWhen(auction.seller.joinedAt,false)} ? {auction.seller.completedSales} completed sales{auction.seller.rating!=null?` ? Rating ${auction.seller.rating.toFixed(1)}`:''}</p></div>
-        <h3>Shipping</h3><p>Quoted shipping {money(auction.shippingAmount)}. The seller arranges dispatch after payment.</p><p><Link href="/buyer-protection">Buying with AUCTA</Link> ? <Link href="/auction-rules">How bidding works</Link></p>
+        <div className="seller-card"><p className="eyebrow">Seller</p><p><strong>{auction.seller.name}</strong>{auction.seller.verified&&<span className="badge"><ShieldCheck size={14}/> Verified seller</span>}</p><p className="muted">{location||'Indonesia'}</p><p className="muted">Joined {formatWhen(auction.seller.joinedAt,false)} · {auction.seller.completedSales} completed sales{auction.seller.rating!=null?` · Rating ${auction.seller.rating.toFixed(1)}`:''}</p></div>
+        <h3>Shipping</h3><p>Quoted shipping {money(auction.shippingAmount)}. The seller arranges dispatch after payment.</p><p><Link href="/buyer-protection">Buying with AUCTA</Link> · <Link href="/auction-rules">How bidding works</Link></p>
       </section>
-    </div>
-    <div className="auction-summary">
-      <p className="eyebrow">{auction.category} ? {auction.brand}</p>
-      <h1 className="page-title">{auction.title}</h1>
-      {auction.subtitle&&<p>{auction.subtitle}</p>}
-      <p className="muted">{auction.condition}{auction.attributes.year?` ? ${auction.attributes.year}`:''} ? {statusLabel(auction.status)}</p>
-      <AuctionLive key={auction.id+':'+(user?.id??'guest')} initial={detail} signedIn={Boolean(user)}/>
     </div>
   </article>;
 }

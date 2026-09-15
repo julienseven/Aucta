@@ -4,6 +4,7 @@ import { getOrder } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 import { OrderActions } from '@/components/pages/order-actions';
+import { OrderProgress } from '@/components/pages/order-progress';
 
 export const metadata: Metadata = { title: 'Order' };
 
@@ -39,6 +40,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <h1 className="page-title">{order.auction.title}</h1>
         <p className="muted">{statusLabel(order.status)} · <Link href={`/auction/${order.auction.slug}`}>View lot</Link></p>
       </header>
+      <OrderProgress order={order} />
       <div className="dashboard-grid">
         <div className="stat"><span className="label">Winning bid</span><strong>{money(order.winningBid)}</strong></div>
         {buyer && <div className="stat"><span className="label">Buyer fee</span><strong>{money(order.buyerFee)}</strong></div>}

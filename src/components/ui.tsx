@@ -14,6 +14,13 @@ export function Dialog({open, onClose, title, children}: {open:boolean;onClose:(
   return <dialog ref={ref} className="dialog" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-labelledby="dialog-title"><div className="dialog-top"><p className="eyebrow">AUCTA</p><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20}/></button></div><h2 id="dialog-title">{title}</h2>{children}</dialog>;
 }
 export function Feedback({message, error=false}:{message:string;error?:boolean}) { return message ? <p className={`feedback ${error?'error':''}`} role={error?'alert':'status'}>{message}</p> : null; }
+export type StatusTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+export function StatusBadge({children,tone='neutral'}:{children:React.ReactNode;tone?:StatusTone}) {
+  return <span className={`badge badge-${tone}`}>{children}</span>;
+}
+export function Alert({children,tone='info',className=''}:{children:React.ReactNode;tone?:StatusTone;className?:string}) {
+  return <div className={`alert alert-${tone} ${className}`.trim()} role={tone==='danger'?'alert':'status'}>{children}</div>;
+}
 export function ActionButton({path,body,label,doneLabel='Done',className='button',onDone}:{path:string;body?:unknown;label:string;doneLabel?:string;className?:string;onDone?:()=>void}) {
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[failed,setFailed]=useState(false);
   return <div><button className={className} disabled={busy} onClick={async()=>{setBusy(true);setMessage('');try{await mutate(path,body);setMessage(doneLabel);setFailed(false);onDone?.();}catch(error){setMessage((error as Error).message);setFailed(true);}finally{setBusy(false);}}}>{busy?'Working…':label}</button><Feedback message={message} error={failed}/></div>;

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Order } from '@/lib/domain';
-import { Feedback, mutate } from '@/components/ui';
+import { Dialog, Feedback, mutate } from '@/components/ui';
 import { money } from './helpers';
 
 export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { order: Order; buyer: boolean; seller: boolean; mockPaymentEnabled: boolean }) {
@@ -16,6 +16,7 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
+  const [confirmReceipt, setConfirmReceipt] = useState(false);
 
   async function run(path: string, body: unknown = {}) {
     setBusy(true);
@@ -82,14 +83,21 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
 
   if (order.status === 'FULFILLMENT' && buyer && !order.receivedAt) {
     return (
-      <section className="notice">
+      <><section className="notice">
         <h2>Confirm you have it</h2>
         <p>Only confirm once the item matches the listing.</p>
-        <button className="button" type="button" disabled={busy} onClick={() => run(`/api/orders/${order.id}/receive`)}>
-          {busy ? 'Saving…' : 'Confirm received'}
+        <button className="button" type="button" disabled={busy} onClick={() => setConfirmReceipt(true)}>
+          Confirm received
         </button>
         <Feedback message={message} error={failed} />
       </section>
+      <Dialog open={confirmReceipt} onClose={() => setConfirmReceipt(false)} title="Confirm receipt">
+        <p>You are confirming that <strong>{order.auction.title}</strong> arrived and matches the listing. This moves the order forward to review.</p>
+        <div className="dialog-actions">
+          <button className="button button-outline" type="button" disabled={busy} onClick={() => setConfirmReceipt(false)}>Not yet</button>
+          <button className="button" type="button" disabled={busy} onClick={() => { setConfirmReceipt(false); void run(`/api/orders/${order.id}/receive`); }}>{busy ? 'Saving…' : 'Yes, I have it'}</button>
+        </div>
+      </Dialog></>
     );
   }
 

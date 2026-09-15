@@ -10,7 +10,8 @@ async function signIn(page:Page,name:'Nadia'|'Aditya'|'Raka Studio'|'Admin',next
   await page.goto('/sign-in?next='+encodeURIComponent(next));
   await page.bringToFront();
   await page.locator('.identity-card').filter({hasText:name}).click();
-  await expect(page).toHaveURL(origin+next);
+  // The first authenticated page can initialize the isolated local database on cold Windows runners.
+  await expect(page).toHaveURL(origin+next,{timeout:60_000});
   await expect(page.locator('.account-link')).toContainText(name.split(' ')[0]);
 }
 
@@ -60,19 +61,20 @@ test('protected pages and mutation endpoints reject unauthenticated or wrong-rol
 });
 
 test('two local bidders compete through the UI; private ceilings stay private and watch retries are idempotent',async({page,browser},testInfo)=>{
+  test.setTimeout(300_000);
   const rivalContext=await browser.newContext({baseURL:origin});
   const rival=await rivalContext.newPage();
   try {
     await signIn(page,'Nadia',WATCH_SLUG);
-    await page.getByRole('button',{name:'Set max bid',exact:true}).click();
-    await page.getByLabel('Maximum bid (IDR)',{exact:true}).fill('5000000');
-    await page.getByRole('button',{name:'Save maximum',exact:true}).click();
+    await page.getByRole('button',{name:'Place bid',exact:true}).first().click();
+    await page.getByLabel('Your maximum (IDR)',{exact:true}).fill('5000000');
+    await page.getByRole('button',{name:'Confirm maximum',exact:true}).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(page.locator('.bid-panel')).toContainText('Bid accepted. You are leading.');
     await signIn(rival,'Aditya',WATCH_SLUG);
-    await rival.getByRole('button',{name:'Set max bid',exact:true}).click();
-    await rival.getByLabel('Maximum bid (IDR)',{exact:true}).fill('3000000');
-    await rival.getByRole('button',{name:'Save maximum',exact:true}).click();
+    await rival.getByRole('button',{name:'Place bid',exact:true}).first().click();
+    await rival.getByLabel('Your maximum (IDR)',{exact:true}).fill('3000000');
+    await rival.getByRole('button',{name:'Confirm maximum',exact:true}).click();
     await expect(rival.getByRole('dialog')).not.toBeVisible();
     await expect(rival.locator('.bid-panel')).toContainText('Another collector has an earlier or higher maximum.');
     await page.bringToFront();
@@ -198,12 +200,12 @@ test('winner can mock-pay, seller ships, buyer receives and reviews',async({page
   const {data}=await(await page.request.get('/api/auctions/'+CAMERA)).json();
   const auction=data.auction;
   if(auction.status==='LIVE'&&Date.parse(auction.endsAt)>Date.parse(auction.serverTime)+10_000){
-    const maxBid=page.getByRole('button',{name:'Set max bid',exact:true});
+    const maxBid=page.getByRole('button',{name:'Place bid',exact:true}).first();
     await expect(maxBid).toBeVisible();
     await maxBid.click();
     // Seed ceiling is 9_000_000; a leader raise must exceed it and does not extend.
-    await page.getByLabel('Maximum bid (IDR)',{exact:true}).fill('10000000');
-    await page.getByRole('button',{name:'Save maximum',exact:true}).click();
+    await page.getByLabel('Your maximum (IDR)',{exact:true}).fill('10000000');
+    await page.getByRole('button',{name:'Confirm maximum',exact:true}).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(page.locator('.bid-panel')).toContainText('Bid accepted. You are leading.');
   }
@@ -255,6 +257,7 @@ test('winner can mock-pay, seller ships, buyer receives and reviews',async({page
   await expect(page).toHaveURL(origin+'/');
   await signIn(page,'Nadia','/orders/'+orderId);
   await page.getByRole('button',{name:'Confirm received',exact:true}).click();
+  await page.getByRole('button',{name:'Yes, I have it',exact:true}).click();
   await expect(page.locator('#order-review')).toBeVisible();
   await page.locator('#order-review').fill(review);
   await page.getByRole('button',{name:'Publish review',exact:true}).click();

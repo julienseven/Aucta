@@ -5,14 +5,12 @@ import type { Auction } from '@/lib/domain';
 import { formatIDR, parseIDR } from '@/lib/auction';
 import { Countdown } from '@/components/countdown';
 import { WatchButton } from '@/components/watch-button';
-import { Dialog, Feedback, mutate } from '@/components/ui';
+import { Alert, Dialog, Feedback, StatusBadge, mutate } from '@/components/ui';
 import { formatWhen, money, signInPath } from './helpers';
-
-type Mode = 'place' | 'max' | null;
 
 export function BidControls({ auction, signedIn, onAccepted }: { auction: Auction; signedIn: boolean; onAccepted: () => Promise<void> }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>(null);
+  const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(auction.minimumBid));
   const [busy, setBusy] = useState(false);
   const pendingRequest = useRef<{ maximum: number; key: string } | null>(null);
@@ -21,15 +19,15 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
   const live = auction.status === 'LIVE';
   const signIn = signInPath(`/auction/${auction.slug}`);
 
-  function open(next: Exclude<Mode, null>) {
+  function openBid() {
     if (!signedIn) {
       router.push(signIn);
       return;
     }
-    setMode(next);
+    setOpen(true);
     setMessage('');
     setFailed(false);
-    setAmount(String(next === 'max' && auction.ownMaximum ? Math.max(auction.ownMaximum + 1, auction.minimumBid) : auction.minimumBid));
+    setAmount(String(auction.ownMaximum ? Math.max(auction.ownMaximum + 1, auction.minimumBid) : auction.minimumBid));
   }
 
   async function submit() {
@@ -42,7 +40,7 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
       if (pendingRequest.current?.maximum !== maximum) pendingRequest.current = { maximum, key: crypto.randomUUID() };
       const result = await mutate<{ is_leading: boolean; extended: boolean }>('/api/bids', { auctionId: auction.id, maximum, idempotencyKey: pendingRequest.current.key });
       pendingRequest.current = null;
-      setMode(null);
+      setOpen(false);
       setMessage(result.is_leading ? 'Bid accepted. You are leading.' : 'Bid accepted. Another collector has an earlier or higher maximum.');
       await onAccepted();
       router.refresh();
@@ -68,20 +66,15 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
         <p className="muted">{auction.bidCount} bids · {auction.bidderCount} bidders · {auction.watchCount} watching</p>
         {live && <Countdown endsAt={auction.endsAt} serverTime={auction.serverTime} />}
         {auction.status === 'SCHEDULED' && <p>Bidding opens {formatWhen(auction.startsAt)} (Jakarta).</p>}
-        {auction.hasReserve && <p className="badge">{auction.reserveMet ? 'Reserve met' : 'Reserve not met'}</p>}
+        {auction.hasReserve && <StatusBadge tone={auction.reserveMet ? 'success' : 'warning'}>{auction.reserveMet ? 'Reserve met' : 'Reserve not met'}</StatusBadge>}
         {typeof auction.ownMaximum === 'number' && <p>Your maximum {money(auction.ownMaximum)}</p>}
-        {auction.isLeading === true && <p className="badge">You are leading</p>}
-        {auction.isLeading === false && typeof auction.ownMaximum === 'number' && <p className="badge">You have been outbid</p>}
-        {live && (
-          <div className="split">
-            <button className="button" type="button" onClick={() => open('place')}>Place bid</button>
-            <button className="button button-outline" type="button" onClick={() => open('max')}>Set max bid</button>
-          </div>
-        )}
-        {live && <p className="muted">Minimum {money(auction.minimumBid)}. Amounts above the visible price stay private. The server decides whether a bid is accepted.</p>}
+        {auction.isLeading === true && <StatusBadge tone="success">You are leading</StatusBadge>}
+        {auction.isLeading === false && typeof auction.ownMaximum === 'number' && <StatusBadge tone="danger">You have been outbid</StatusBadge>}
+        {live && <button className="button" type="button" onClick={openBid}>Place bid</button>}
+        {live && <p className="muted">Minimum {money(auction.minimumBid)}. Enter the most you are willing to pay; AUCTA raises the visible price only as needed and keeps the rest private.</p>}
         {!live && auction.status === 'SCHEDULED' && <p className="muted">The floor is not open yet.</p>}
         {!live && auction.status !== 'SCHEDULED' && <p className="muted">This auction is no longer taking bids.</p>}
-        {message && mode === null && <Feedback message={message} error={failed} />}
+        {message && !open && <Alert tone={failed ? 'danger' : 'success'}>{message}</Alert>}
         <WatchButton key={`${auction.id}:${auction.isWatching}`} auctionId={auction.id} watching={auction.isWatching ?? false} withLabel />
       </aside>
       {live && (
@@ -91,18 +84,14 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
             <strong>{money(auction.currentPrice)}</strong>
           </div>
           <Countdown endsAt={auction.endsAt} serverTime={auction.serverTime} compact />
-          <button className="button" type="button" onClick={() => open('place')}>Place bid</button>
+          <button className="button" type="button" onClick={openBid}>Place bid</button>
         </div>
       )}
-      <Dialog open={mode !== null} onClose={() => setMode(null)} title={mode === 'max' ? 'Set a private maximum' : 'Place a bid'}>
-        <p className="muted">
-          {mode === 'max'
-            ? 'AUCTA uses your maximum only as far as needed to lead. Other bidders never see this number.'
-            : `Enter a whole rupiah amount of at least ${money(auction.minimumBid)}. Amounts above the visible price are treated as your private ceiling.`}
-        </p>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Place your bid">
+        <p className="muted">Enter your private maximum. AUCTA bids only as far as needed to lead, and other bidders never see this number.</p>
         <form className="form" onSubmit={event => { event.preventDefault(); void submit(); }}>
           <div className="field">
-            <label className="field-label" htmlFor="bid-amount">{mode === 'max' ? 'Maximum bid (IDR)' : 'Your bid (IDR)'}</label>
+            <label className="field-label" htmlFor="bid-amount">Your maximum (IDR)</label>
             <input
               className="input"
               id="bid-amount"
@@ -113,11 +102,21 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
               onChange={event => setAmount(event.target.value)}
               required
             />
+            <p className="field-help">Minimum {money(auction.minimumBid)}{parsePricePreview(amount)}</p>
           </div>
-          <button className="button" type="submit" disabled={busy}>{busy ? 'Working…' : mode === 'max' ? 'Save maximum' : 'Confirm bid'}</button>
+          <button className="button" type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Confirm maximum'}</button>
           <Feedback message={message} error={failed} />
         </form>
       </Dialog>
     </>
   );
+}
+
+function parsePricePreview(value: string): string {
+  try {
+    const parsed = parseIDR(value);
+    return parsed > 0 ? ` · You entered ${formatIDR(parsed)}` : '';
+  } catch {
+    return '';
+  }
 }

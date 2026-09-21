@@ -97,7 +97,7 @@ function PendingSellers({ sellers }: { sellers: Seller[] }) {
   );
 }
 
-export function AdminDesk({ pending, live, sellers, reports, disputes, audit }: AdminData) {
+export function AdminDesk({ pending, live, sellers, reports, audit }: AdminData) {
   return (
     <div className="page">
       <header className="page-header">
@@ -109,7 +109,7 @@ export function AdminDesk({ pending, live, sellers, reports, disputes, audit }: 
         <div className="stat"><span className="label">Pending listings</span><strong>{pending.length}</strong></div>
         <div className="stat"><span className="label">Live and upcoming</span><strong>{live.length}</strong></div>
         <div className="stat"><span className="label">Seller applications</span><strong>{sellers.length}</strong></div>
-        <div className="stat"><span className="label">Open reports</span><strong>{reports.length}</strong></div>
+        <div className="stat"><span className="label">Open reports</span><strong>{reports.filter(report => report.status === 'open').length}</strong></div>
       </div>
       <PendingListings pending={pending} />
       <section>
@@ -131,39 +131,6 @@ export function AdminDesk({ pending, live, sellers, reports, disputes, audit }: 
         )}
       </section>
       <PendingSellers sellers={sellers} />
-      <section>
-        <h2>Reports</h2>
-        {reports.length === 0 ? <p className="empty-state">No reports.</p> : (
-          <table className="table">
-            <thead><tr><th>Reason</th><th>Status</th></tr></thead>
-            <tbody>
-              {reports.map(report => (
-                <tr key={report.id}>
-                  <td>{report.reason}</td>
-                  <td>{report.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-      <section>
-        <h2>Disputes</h2>
-        {disputes.length === 0 ? <p className="empty-state">No disputes.</p> : (
-          <table className="table">
-            <thead><tr><th>Reason</th><th>Status</th><th>Order</th></tr></thead>
-            <tbody>
-              {disputes.map(dispute => (
-                <tr key={dispute.id}>
-                  <td>{dispute.reason}</td>
-                  <td>{dispute.status}</td>
-                  <td>{dispute.orderId ? <Link href={`/orders/${dispute.orderId}`}>{dispute.orderId}</Link> : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
       <section>
         <h2>Audit</h2>
         {audit.length === 0 ? <p className="empty-state">No audit rows.</p> : (

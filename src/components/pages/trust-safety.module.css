@@ -1,0 +1,12 @@
+.desk { display: grid; gap: 2rem; margin-block: 2rem; }
+.desk section { min-width: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+.panel { border: 1px solid var(--line, #d9d3ca); border-radius: 8px; padding: 1.25rem; margin-block: 1rem; min-width: 0; }
+.panel h4 { margin-block: 0 .75rem; font-size: 1.15rem; }
+.panel summary { cursor: pointer; min-height: 44px; align-content: center; font-weight: 600; }
+.panel details { margin-top: 1rem; }
+.form { display: grid; gap: .75rem; margin-block: 1rem; }
+.form textarea { width: 100%; min-height: 7rem; }
+.form button { justify-self: start; max-width: 100%; white-space: normal; }
+.hint { font-size: .875rem; margin: 0; }
+.reason { white-space: pre-wrap; overflow-wrap: anywhere; }

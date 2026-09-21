@@ -139,7 +139,7 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
     PAYMENT_FAILED: { title: 'Payment was not completed', detail: buyer
       ? 'This order is marked payment failed. Payment cannot be retried from this page. You can return to your account to review your other orders.'
       : 'This order is marked payment failed. Do not ship this lot. Relisting and payment recovery are not available from this page.' },
-    DISPUTED: { title: 'This order is disputed', detail: 'Payment, shipment and receipt actions are paused for this order. Keep your order details and any delivery evidence. Dispute resolution is not available from this page.' },
+    DISPUTED: { title: 'This order is disputed', detail: 'Payment, shipment and receipt actions are paused while an administrator reviews the issue. Keep your order details and delivery evidence; the recorded outcome appears below.' },
     REFUNDED: { title: 'This order is marked refunded', detail: 'No further payment or fulfillment action is available here. This status alone does not confirm a transfer to a bank account; payment-provider refund details are not available on this page.' },
     CANCELLED: { title: 'This order was cancelled', detail: 'No further payment or shipment action is available. You can still view the recorded order details below.' },
     COMPLETED: { title: buyer ? 'Your order is complete' : 'Your sale is complete', detail: buyer

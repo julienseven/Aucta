@@ -2,11 +2,16 @@ import type { Metadata } from 'next';
 import { getAdminData } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
 import { AdminDesk } from '@/components/pages/admin-desk';
+import { TrustSafetyDesk } from '@/components/pages/trust-safety';
+import { getTrustSafetyData } from '@/lib/server/trust-safety-read';
 
 export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 
 export default async function AdminPage() {
-  const result = await loadProtected('/admin', getAdminData);
+  const result = await loadProtected('/admin', async () => {
+    const [admin, trust] = await Promise.all([getAdminData(), getTrustSafetyData()]);
+    return { ...admin, trust };
+  });
   if (!result.ok) {
     return (
       <div className="page">
@@ -18,5 +23,5 @@ export default async function AdminPage() {
     );
   }
 
-  return <AdminDesk pending={result.data.pending} live={result.data.live} sellers={result.data.sellers} reports={result.data.reports} disputes={result.data.disputes} audit={result.data.audit} />;
+  return <><AdminDesk pending={result.data.pending} live={result.data.live} sellers={result.data.sellers} reports={result.data.reports} disputes={result.data.disputes} audit={result.data.audit} /><div className="page"><TrustSafetyDesk data={result.data.trust} /></div></>;
 }

@@ -5,6 +5,8 @@ import { loadProtected } from '@/components/pages/protect';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 import { OrderActions } from '@/components/pages/order-actions';
 import { OrderProgress } from '@/components/pages/order-progress';
+import { OrderDispute } from '@/components/pages/trust-safety';
+import { getOrderDispute } from '@/lib/server/trust-safety-read';
 
 export const metadata: Metadata = { title: 'Order', robots: { index: false, follow: false } };
 
@@ -32,6 +34,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const buyer = result.user.id === order.buyerId;
   const seller = result.user.id === order.sellerId;
+  const dispute = await getOrderDispute(id);
 
   return (
     <div className="page">
@@ -50,6 +53,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
       {order.status === 'AWAITING_PAYMENT' && <p>Payment deadline {formatWhen(order.paymentDeadline)} (Jakarta).</p>}
       <OrderActions order={order} buyer={buyer} seller={seller} mockPaymentEnabled={result.user.local} />
+      <OrderDispute orderId={id} status={order.status} dispute={dispute} />
       {order.address && (
         <section>
           <h2>Delivery</h2>

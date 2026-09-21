@@ -192,7 +192,7 @@ test('collector can apply for a seller desk and open selling',async({page})=>{
   await expect(page.getByRole('button',{name:'New listing',exact:true})).toBeVisible();
 });
 
-test('winner can mock-pay, seller ships, buyer receives and reviews',async({page,request})=>{
+test('winner can mock-pay, dispute and resume, seller ships, buyer receives and reviews',async({page,request,browser})=>{
   test.setTimeout(240_000);
   const review='Glass and body as described.';
   await signIn(page,'Nadia',CAMERA_SLUG);
@@ -243,6 +243,26 @@ test('winner can mock-pay, seller ships, buyer receives and reviews',async({page
   await expect(page.locator('main')).toContainText('No money is collected');
   await expect(page.locator('main')).toContainText('Paid');
   await expect(page.locator('main')).toContainText('Waiting on the seller to ship');
+  await page.getByText('Need help with this order?', { exact: true }).click();
+  const disputeForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Open dispute', exact: true }) });
+  await disputeForm.getByLabel('Reason', { exact: true }).fill('Please clarify the item condition before shipping.');
+  await disputeForm.getByRole('button', { name: 'Open dispute', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm open dispute', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Dispute under review' })).toBeVisible();
+  const adminContext = await browser.newContext({ baseURL: origin });
+  try {
+    await adminContext.request.post('/api/auth/local', { headers: { origin }, data: { identity: 'admin' } });
+    const adminPage = await adminContext.newPage();
+    await adminPage.goto('/admin');
+    const disputeCard = adminPage.locator('article').filter({ hasText: 'Please clarify the item condition before shipping.' });
+    await disputeCard.getByLabel('Reason', { exact: true }).fill('Buyer and seller clarified condition and agreed to resume.');
+    await disputeCard.getByRole('button', { name: 'Resolve dispute', exact: true }).click();
+    await adminPage.getByRole('button', { name: 'Confirm resolve dispute', exact: true }).click();
+    await expect(disputeCard).toContainText('resolved_resume');
+  } finally { await adminContext.close(); }
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Dispute record' })).toBeVisible();
+  await expect(page.locator('main')).toContainText('Buyer and seller clarified condition and agreed to resume.');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
   await page.goto('/account');
   await page.getByRole('button',{name:'Sign out',exact:true}).click();

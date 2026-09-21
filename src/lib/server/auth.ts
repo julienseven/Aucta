@@ -27,7 +27,14 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     id = user.id;
     email = user.email;
   }
-  const dashboard = await callRpc<{ profile?: Record<string, unknown>; seller?: Record<string, unknown> }>("dashboard", {}, id);
+  let dashboard: { profile?: Record<string, unknown>; seller?: Record<string, unknown> };
+  try {
+    dashboard = await callRpc("dashboard", {}, id);
+  } catch (error) {
+    // Database authority may revoke an otherwise valid session through suspension.
+    if (error instanceof ServiceError && error.status === 403) return null;
+    throw error;
+  }
   const profile = dashboard.profile;
   if (!profile || profile.suspended === true) return null;
   const role = profile.role === "admin" ? "admin" : profile.role === "seller" || dashboard.seller ? "seller" : "buyer";

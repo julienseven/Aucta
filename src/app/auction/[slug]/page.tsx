@@ -6,6 +6,7 @@ import { getAuction, getCurrentUser } from '@/lib/server/marketplace';
 import { ShieldCheck } from '@/components/icons';
 import { AuctionLive } from '@/components/pages/auction-live';
 import { Gallery } from '@/components/pages/gallery';
+import { ReportListing } from '@/components/pages/trust-safety';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 import { publicError } from '@/components/pages/protect';
 import { auctionStructuredData, serializeJsonLd } from '@/lib/seo';
@@ -59,6 +60,7 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
     </div>
     <div className="auction-object">
       <Gallery images={auction.images} alt={auction.imageAlt||auction.title}/>
+      <ReportListing listingId={auction.listingId} signedIn={Boolean(user)} />
       <section className="item-description">
         <p className="eyebrow">THE OBJECT</p>
         <h2>A closer look.</h2>

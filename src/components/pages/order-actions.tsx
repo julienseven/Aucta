@@ -2,15 +2,17 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { Order } from '@/lib/domain';
 import { Dialog, Feedback, mutate } from '@/components/ui';
 import { money } from './helpers';
+import styles from './seller-order-flows.module.css';
 
 export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { order: Order; buyer: boolean; seller: boolean; mockPaymentEnabled: boolean }) {
   const router = useRouter();
   const payKey = useRef(`pay-${order.id}`);
-  const [carrier, setCarrier] = useState('JNE YES');
-  const [tracking, setTracking] = useState(`AUCTA${order.id.replace(/-/g, '').slice(0, 10).toUpperCase()}`);
+  const [carrier, setCarrier] = useState(order.carrier ?? '');
+  const [tracking, setTracking] = useState(order.trackingNumber ?? '');
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,7 +40,7 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
       return (
         <section className="notice">
           <h2>Payment is not available yet</h2>
-          <p>AUCTA will notify you when online payment processing is ready.</p>
+          <p>Online checkout is not connected. Payment cannot be recorded here yet; this page cannot extend the payment deadline.</p>
         </section>
       );
     }
@@ -68,7 +70,7 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
             <label className="field-label" htmlFor="order-tracking">Tracking number</label>
             <input id="order-tracking" className="input" value={tracking} onChange={(event) => setTracking(event.target.value)} maxLength={100} autoComplete="off" />
           </div>
-          <button className="button" type="button" disabled={busy} onClick={() => run(`/api/orders/${order.id}/ship`, { carrier, trackingNumber: tracking })}>
+          <button className="button" type="button" disabled={busy || !carrier.trim() || !tracking.trim()} onClick={() => run(`/api/orders/${order.id}/ship`, { carrier, trackingNumber: tracking })}>
             {busy ? 'Saving…' : 'Mark as shipped'}
           </button>
         </div>
@@ -133,5 +135,22 @@ export function OrderActions({ order, buyer, seller, mockPaymentEnabled }: { ord
     return <p className="notice">The buyer confirmed receipt. Waiting on their review to complete the sale.</p>;
   }
 
-  return message ? <Feedback message={message} error={failed} /> : null;
+  const outcomes: Partial<Record<Order['status'], { title: string; detail: string }>> = {
+    PAYMENT_FAILED: { title: 'Payment was not completed', detail: buyer
+      ? 'This order is marked payment failed. Payment cannot be retried from this page. You can return to your account to review your other orders.'
+      : 'This order is marked payment failed. Do not ship this lot. Relisting and payment recovery are not available from this page.' },
+    DISPUTED: { title: 'This order is disputed', detail: 'Payment, shipment and receipt actions are paused for this order. Keep your order details and any delivery evidence. Dispute resolution is not available from this page.' },
+    REFUNDED: { title: 'This order is marked refunded', detail: 'No further payment or fulfillment action is available here. This status alone does not confirm a transfer to a bank account; payment-provider refund details are not available on this page.' },
+    CANCELLED: { title: 'This order was cancelled', detail: 'No further payment or shipment action is available. You can still view the recorded order details below.' },
+    COMPLETED: { title: buyer ? 'Your order is complete' : 'Your sale is complete', detail: buyer
+      ? 'Thank you for collecting with AUCTA. Your order details remain available here whenever you need them.'
+      : 'The order is complete. You can return to your seller desk to manage your other lots. Completion does not confirm a seller payout.' },
+    AWAITING_PAYMENT: { title: 'Waiting for the buyer', detail: 'The buyer needs to complete payment before you ship. Shipment details can be added after payment is recorded.' },
+  };
+  const outcome = outcomes[order.status];
+  return outcome ? <section className={`notice ${styles.outcome}`} aria-labelledby="order-outcome-title">
+    <h2 id="order-outcome-title">{outcome.title}</h2>
+    <p>{outcome.detail}</p>
+    <Link className="button button-outline" href={seller ? '/selling' : '/account'}>{seller ? 'Back to your seller desk' : 'Back to your account'}</Link>
+  </section> : message ? <Feedback message={message} error={failed} /> : null;
 }

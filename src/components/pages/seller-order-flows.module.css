@@ -1,0 +1,24 @@
+.section {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+}
+
+.section legend {
+  padding: 0 .5rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.section p { margin: 0; }
+.readiness { width: 100%; height: .5rem; accent-color: var(--success); }
+
+.outcome { margin-block: 1.5rem; }
+.outcome h2 { margin-top: 0; }
+
+@media (max-width: 480px) {
+  .section { padding: .875rem; }
+}

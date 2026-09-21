@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Feedback, mutate } from '@/components/ui';
 import { safeNext } from './helpers';
 import { notifySessionChange } from '@/lib/session-events';
+import { intentDescription } from '@/lib/sign-in-intent';
 
 const IDENTITIES = [
   { identity: 'buyer' as const, name: 'Nadia', role: 'Collector', note: 'Watch lots and bid.' },
@@ -43,6 +44,7 @@ export function SignInForm({ local, next, errorCode }: { local: boolean; next: s
 
   return (
     <div className="sign-in-card">
+      {intentDescription(destination) && <p className="notice">{intentDescription(destination)}</p>}
       {local && (
         <>
           <p className="eyebrow">Local development</p>

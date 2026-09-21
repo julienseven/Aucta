@@ -1,12 +1,14 @@
 # AUCTA — implementation handoff
 
-Updated 15 September 2026 after the UX principles implementation.
+Updated 21 September 2026 after the guided-flow UX implementation.
 
 ## UX implementation checkpoint
 
 See UX_DESIGN.md for the reference-to-implementation mapping. Added a single private-maximum bid flow, semantic feedback, mobile filter disclosure, actual result counts, account next actions, order progress, receipt confirmation and truthful draft readiness. Auction summary now precedes long descriptions in document order; seller evidence and shipping sit beside the decision area.
 
-Validation: typecheck, lint, 232 unit/database/service tests and production build passed. After updating bid selectors, the complete browser suite passed all 9 scenarios, including two-bidder competition and pay-to-review. Isolated cold-start reruns timed out on auction navigation after a successful authentication response; the full suite passed in 2.9 minutes. Mobile auction capture inspected. These results do not verify hosted dependencies or establish marketplace launch readiness.
+The follow-up batch now preserves bid and watch intentions through sign-in without performing an automatic mutation, contains keyboard focus in mobile navigation/search, groups seller inputs by task, requires real shipping details, and derives order guidance from recorded states. Exceptional payment, dispute, refund and cancellation states no longer imply progress that did not happen.
+
+Validation: typecheck, lint, 253 unit/database/service tests, and a production build passed. The complete browser suite passed all 12 scenarios in 2.4 minutes, including two-bidder competition, pay-to-review, mobile keyboard navigation, and bid/watch sign-in recovery. These results do not verify hosted dependencies or establish marketplace launch readiness.
 
 ## User decisions that persist
 
@@ -80,9 +82,9 @@ Browser tests use installed Google Chrome and a separate origin/database, and bu
 
 ## Verification results
 
-- Unit/service/database tests: **229 passed across 12 files** (14 September). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, local closer gates, order API contracts, and negative permissions under PGlite.
-- Typecheck: passed on 14 September.
-- Lint: full project passed on 14 September with no warnings.
-- Production build: passed on 14 September, including `/api/orders/[id]/pay|ship|receive|review` and instrumentation.
-- Browser verification: **9 passed** (1.9m with `AUCTA_E2E_SKIP_BUILD=true` after a successful production build). Includes Hasselblad close → Nadia mock pay at 320px → Raka ship → Nadia receive/review. Catalogue, auth, bidding, seller draft, and admin approve still pass.
+- Unit/service/database tests: **253 passed across 14 files** (21 September). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, sign-in intent validation, order-state presentation, local closer gates, order API contracts, and negative permissions under PGlite.
+- Typecheck: passed on 21 September.
+- Lint: full project passed on 21 September with no warnings.
+- Production build: passed on 21 September, including `/api/orders/[id]/pay|ship|receive|review` and instrumentation.
+- Browser verification: **12 passed** (2.4m with `AUCTA_E2E_SKIP_BUILD=true` after a successful production build). Includes Hasselblad close → Nadia mock pay at 320px → Raka ship → Nadia receive/review, plus mobile focus containment and explicit bid/watch recovery after sign-in. Catalogue, auth, bidding, seller draft, and admin approve still pass.
 - Hosted Supabase Auth/Realtime/Storage, durable hosted closing, real multi-connection PostgreSQL concurrency, and live payment providers remain unverified. Reports/disputes/suspension have no mutation endpoints. Mock checkout does not collect money.

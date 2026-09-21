@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { X } from './icons';
 
 export async function mutate<T = unknown>(path: string, body: unknown = {}, method = 'POST'): Promise<T> {
@@ -10,8 +10,15 @@ export async function mutate<T = unknown>(path: string, body: unknown = {}, meth
 }
 export function Dialog({open, onClose, title, children}: {open:boolean;onClose:()=>void;title:string;children:React.ReactNode}) {
   const ref=useRef<HTMLDialogElement>(null);
-  useEffect(()=>{ const dialog=ref.current; if(open && !dialog?.open) dialog?.showModal(); else if(!open && dialog?.open) dialog.close(); },[open]);
-  return <dialog ref={ref} className="dialog" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-labelledby="dialog-title"><div className="dialog-top"><p className="eyebrow">AUCTA</p><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20}/></button></div><h2 id="dialog-title">{title}</h2>{children}</dialog>;
+  const titleId=useId();
+  useEffect(()=>{
+    const dialog=ref.current;
+    if(!open||!dialog)return;
+    if(!dialog.open)dialog.showModal();
+    return()=>{if(dialog.open)dialog.close();};
+  },[open]);
+  if(!open)return null;
+  return <dialog ref={ref} className="dialog" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-labelledby={titleId}><div className="dialog-top"><p className="eyebrow">AUCTA</p><button type="button" className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20}/></button></div><h2 id={titleId}>{title}</h2>{children}</dialog>;
 }
 export function Feedback({message, error=false}:{message:string;error?:boolean}) { return message ? <p className={`feedback ${error?'error':''}`} role={error?'alert':'status'}>{message}</p> : null; }
 export type StatusTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/server/marketplace';
 import { SignInForm } from '@/components/pages/sign-in-form';
 import { queryValue, safeNext } from '@/components/pages/helpers';
+import { intentDescription } from '@/lib/sign-in-intent';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -22,7 +23,8 @@ export default async function SignInPage({
           <p className="eyebrow">Signed in</p>
           <h1 className="page-title">You are already in.</h1>
           <p>Continue as {user.name}.</p>
-          <Link className="button" href={next}>Go to your account</Link>
+          {intentDescription(next) && <p>{intentDescription(next)}</p>}
+          <Link className="button" href={next}>{next === '/account' ? 'Go to your account' : 'Continue where you left off'}</Link>
         </div>
       </div>
     );

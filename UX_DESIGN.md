@@ -10,6 +10,9 @@ Applied from the supplied design-system, UX psychology and user-flow boards and 
 - Auction title and summary precede long-form detail in document order; desktop grid placement preserves object imagery on the left. Seller evidence and shipping costs sit near the bid decision.
 - Account next steps derive from actual outbid and order records. The order page shows progress, and receipt confirmation requires a deliberate second action.
 - Draft readiness counts actual form requirements and links to missing fields. Existing autosave and moderation remain authoritative; readiness is not approval.
+- Bid and watch intentions survive sign-in in the return URL, but the user must review and confirm them after authentication. Consumed intentions are removed so reloads cannot replay them.
+- Mobile navigation and search use keyboard-contained modal panels, return focus to their triggers and close when the desktop layout takes over.
+- Seller listing fields are grouped by object details, imagery and auction terms. Shipment requires real carrier and tracking values; order progress is derived from recorded milestones and pauses honestly in exceptional states.
 
 ## Rules for future changes
 
@@ -17,4 +20,4 @@ Prefer one primary action, recognizable labels, accessible controls, contextual 
 
 ## Remaining opportunities
 
-Guest intent restoration, keyboard-contained mobile navigation, fuller seller form grouping, exceptional order-state presentation and a comprehensive accessibility audit remain separate follow-up improvements. Cloud authentication, payments, durable scheduling and multi-connection concurrency remain existing launch gates.
+A comprehensive accessibility audit, gallery interactions, stronger empty/loading states and SEO remain separate follow-up improvements. Cloud authentication, payments, durable scheduling and multi-connection concurrency remain existing launch gates.

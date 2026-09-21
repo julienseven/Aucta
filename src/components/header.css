@@ -1,0 +1,35 @@
+.header-dialog {
+  position: fixed;
+  inset: var(--header-h) 0 auto;
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - var(--header-h));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  overflow: auto;
+}
+
+body:has(.development-bar) .header-dialog {
+  top: calc(var(--header-h) + var(--devbar-h));
+  max-height: calc(100dvh - var(--header-h) - var(--devbar-h));
+}
+
+.header-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+body:has(.header-dialog[open]) { overflow: hidden; }
+.header-dialog-content { position: relative; padding-top: 3.5rem; }
+.header-dialog-close { position: absolute; top: 0.35rem; right: var(--gutter); min-width: 44px; min-height: 44px; }
+
+.header-dialog .header-search,
+.header-dialog .mobile-nav {
+  position: static;
+  border-bottom: 0;
+}
+
+.header-dialog .header-search { flex-wrap: wrap; }
+.header-dialog .header-search input { flex-basis: 55%; }
+.header-dialog .header-search button { min-height: 44px; }
+.header-dialog-menu .mobile-nav { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }

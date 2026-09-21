@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Auction } from '@/lib/domain';
 import { formatIDR, parseIDR } from '@/lib/auction';
@@ -7,6 +7,7 @@ import { Countdown } from '@/components/countdown';
 import { WatchButton } from '@/components/watch-button';
 import { Alert, Dialog, Feedback, StatusBadge, mutate } from '@/components/ui';
 import { formatWhen, money, signInPath } from './helpers';
+import { clearIntent, intentDestination, readIntent } from '@/lib/sign-in-intent';
 
 export function BidControls({ auction, signedIn, onAccepted }: { auction: Auction; signedIn: boolean; onAccepted: () => Promise<void> }) {
   const router = useRouter();
@@ -17,11 +18,28 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
   const live = auction.status === 'LIVE';
-  const signIn = signInPath(`/auction/${auction.slug}`);
+  function signIn() {
+    return signInPath(intentDestination(window.location.pathname + window.location.search + window.location.hash, { action: 'bid', auctionId: auction.id }));
+  }
+
+  useEffect(() => {
+    if (!signedIn || readIntent(window.location.pathname + window.location.search, auction.id)?.action !== 'bid') return;
+    const timer = window.setTimeout(() => {
+      window.history.replaceState(null, '', clearIntent(window.location.pathname + window.location.search + window.location.hash));
+      if (auction.status === 'LIVE') {
+        setAmount(String(auction.ownMaximum ? Math.max(auction.ownMaximum + 1, auction.minimumBid) : auction.minimumBid));
+        setOpen(true);
+      } else {
+        setFailed(true);
+        setMessage('This auction is no longer open for bidding. No bid was placed.');
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [signedIn, auction.id, auction.status, auction.minimumBid, auction.ownMaximum]);
 
   function openBid() {
     if (!signedIn) {
-      router.push(signIn);
+      router.push(signIn());
       return;
     }
     setOpen(true);
@@ -47,7 +65,7 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
     } catch (error) {
       const text = (error as Error).message;
       if (/sign|auth|session/i.test(text)) {
-        router.push(signIn);
+        router.push(signIn());
         return;
       }
       setFailed(true);

@@ -7,6 +7,7 @@ import type { AuctionStatus, Condition } from '@/lib/domain';
 import { parseIDR } from '@/lib/auction';
 import { Feedback, mutate } from '@/components/ui';
 import { CATEGORIES, CONDITIONS, statusLabel } from './helpers';
+import styles from './seller-order-flows.module.css';
 
 const DURATIONS = [24, 48, 72, 168] as const;
 const SAMPLE_IMAGES = [
@@ -409,9 +410,12 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
         <p className="muted">Sample photographs are fictional development imagery. AUCTA reviews every lot; submitting asks for moderation and does not publish the object.</p>
         {!frozen && <aside className="writer-progress" aria-labelledby="writer-progress-title">
           <div><p className="eyebrow">Draft readiness</p><h2 id="writer-progress-title">{completedRequirements} of {requirements.length} essentials complete</h2></div>
-          <div className="progress-track" aria-hidden="true"><span style={{width:`${completedRequirements / requirements.length * 100}%`}} /></div>
+          <progress className={styles.readiness} value={completedRequirements} max={requirements.length} aria-label="Draft essentials complete">{completedRequirements} of {requirements.length}</progress>
           <ul>{requirements.map(item => <li key={item.label} className={item.done ? 'is-complete' : ''}><span aria-hidden="true">{item.done ? '✓' : '○'}</span>{item.done ? item.label : <a href={item.href}>{item.label}</a>}</li>)}</ul>
         </aside>}
+        <fieldset className={styles.section} disabled={frozen || busy}>
+          <legend>1. Present your object</legend>
+          <p className="muted">Choose imagery, then give collectors a clear title and description.</p>
         <div className="field">
           <span className="field-label" id="listing-images-label">Images</span>
           <div className="image-picker" role="group" aria-labelledby="listing-images-label">
@@ -448,6 +452,10 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
           <label className="field-label" htmlFor="listing-description">Description</label>
           <textarea className="input" id="listing-description" maxLength={10000} value={form.description} disabled={frozen} onChange={event => patch({ description: event.target.value })} />
         </div>
+        </fieldset>
+        <fieldset className={styles.section} disabled={frozen || busy}>
+          <legend>2. Describe condition and history</legend>
+          <p className="muted">Include known flaws and the history you can substantiate. Brand and provenance are optional.</p>
         <div className="field">
           <label className="field-label" htmlFor="listing-condition">Condition</label>
           <select className="input" id="listing-condition" value={form.condition} disabled={frozen} onChange={event => patch({ condition: event.target.value as Condition })}>
@@ -466,6 +474,10 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
           <label className="field-label" htmlFor="listing-brand">Brand</label>
           <input className="input" id="listing-brand" maxLength={100} autoComplete="off" value={form.brand} disabled={frozen} onChange={event => patch({ brand: event.target.value })} />
         </div>
+        </fieldset>
+        <fieldset className={styles.section} disabled={frozen || busy}>
+          <legend>3. Set price and timing</legend>
+          <p className="muted">Use whole IDR amounts. Leave the optional reserve and increment blank to use no reserve and the standard bid increments.</p>
         <div className="split">
           <div className="field">
             <label className="field-label" htmlFor="listing-starting-price">Starting price (IDR)</label>
@@ -501,6 +513,8 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
             </select>
           </div>
         </div>
+          <p className="muted">Start time uses your device’s local timezone. Submission sends this draft for review before it can appear in the catalogue.</p>
+        </fieldset>
         <div className="writer-toolbar">
           {!frozen && (
             <button className="button" type="submit" disabled={busy || !complete}>{busy ? 'Working…' : 'Submit for review'}</button>

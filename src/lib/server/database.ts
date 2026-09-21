@@ -7,6 +7,20 @@ import { localRuntimeEnabled } from "./runtime";
 type LocalDatabase = { db: PGlite; queue: Promise<unknown> };
 const globalDatabase = globalThis as typeof globalThis & { auctaDatabase?: Promise<LocalDatabase> };
 
+// These files were renamed only after their SQL matched the hosted migration history.
+// Persistent local databases must adopt the canonical names without replaying DDL.
+const legacyMigrationNames: Record<string, string> = {
+  "20260914171550_init.sql": "0001_init.sql",
+  "20260914171552_rpcs.sql": "0002_rpcs.sql",
+  "20260914171553_auction_detail_alias.sql": "0003_auction_detail_alias.sql",
+  "20260914171554_harden_auction_permissions.sql": "20260910070304_harden_auction_permissions.sql",
+  "20260914171556_seller_listing_mutations.sql": "20260911120000_seller_listing_mutations.sql",
+  "20260914171557_moderation_mutations.sql": "20260911140000_moderation_mutations.sql",
+  "20260914171559_order_mutations.sql": "20260912013000_order_mutations.sql",
+  "20260914171600_prepare_hosted_launch.sql": "20260914171353_prepare_hosted_launch.sql",
+  "20260914171809_tighten_hosted_rpc_grants.sql": "20260914171714_tighten_hosted_rpc_grants.sql",
+};
+
 /** The entire identity + query transaction is queued, never just SET ROLE. */
 async function runAsRole<T>(database: LocalDatabase, role: "anon" | "authenticated" | "service_role", userId: string | null,
   operation: (tx: Transaction) => Promise<T>): Promise<T> {
@@ -45,7 +59,11 @@ export async function createDatabase(options: { dataDir?: string; seed?: boolean
   for (const name of (await readdir(path.join(process.cwd(), "supabase/migrations"))).filter((file) => file.endsWith(".sql")).sort()) {
     if (names.has(name)) continue;
     await db.transaction(async (tx) => {
-      await tx.exec(await readFile(path.join(process.cwd(), "supabase/migrations", name), "utf8"));
+      if (legacyMigrationNames[name] && names.has(legacyMigrationNames[name])) {
+        await tx.query("delete from public.aucta_local_migrations where name=$1", [legacyMigrationNames[name]]);
+      } else {
+        await tx.exec(await readFile(path.join(process.cwd(), "supabase/migrations", name), "utf8"));
+      }
       await tx.query("insert into public.aucta_local_migrations(name) values ($1)", [name]);
     });
   }

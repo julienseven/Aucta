@@ -1,6 +1,14 @@
 # AUCTA — implementation handoff
 
-Updated 21 September 2026 after the accessibility, gallery and SEO polish milestone.
+Updated 22 September 2026 for the hosted migration-history repair.
+
+## Hosted migration-history repair
+
+The Supabase check on `3b3242e` failed because all nine previously deployed migration versions differed from their repository filenames. Direct comparison of the SQL stored in AUCTA's hosted migration history found all nine bodies identical after newline/outer-whitespace normalization. The files now use the hosted version numbers; the local runner adopts canonical history names without reapplying old SQL. Fresh-database and persisted legacy-history restart regressions cover this compatibility path.
+
+The repair does not reset the database, rewrite hosted migration history, or load fictional seed data. The existing GitHub integration should apply only `20260921090000_trust_safety.sql`; verify its recorded version and RPC permissions after pushing. Vercel already deployed `3b3242e` successfully, while the trust-and-safety RPCs were confirmed absent before this repair. Earlier local-only and unavailable-connector notes below are historical, not the current deployment state.
+
+Repair verification before push: typecheck, lint, all 310 tests across 19 files, and production build passed. The public homepage, catalogue and sign-in route returned HTTP 200. Hosted security advisories still flag intentional security-definer API entry points and locked-down private tables, plus disabled leaked-password protection; the latter is a separate auth-hardening follow-up.
 
 ## UX implementation checkpoint
 
@@ -39,12 +47,12 @@ Validation: typecheck, lint, 258 unit/database/service tests, and a production b
 - Fixed detail-page grid placement and narrow-screen bidding controls. Accepted bids show feedback. Uncertain retries retain the same idempotency key.
 - Watch API now honors the requested watching state through set_watch. Retries no longer toggle a watch off or inflate counters. Account watch rows are deduplicated.
 - Removed unpaid AWAITING_PAYMENT results from sold listings. Preserved safe notification links and centralized UI minimum-increment mapping.
-- Added migration 20260910070304_harden_auction_permissions.sql: revoked untrusted execution of private write helpers, enforced deleted/draft visibility on auction reads/writes, bounded closing batches, prevented scheduled-start starvation, and limited closing to service_role.
+- Added migration 20260914171554_harden_auction_permissions.sql: revoked untrusted execution of private write helpers, enforced deleted/draft visibility on auction reads/writes, bounded closing batches, prevented scheduled-start starvation, and limited closing to service_role.
 - Added a dedicated cookie-free Supabase scheduler client and serialized local service-role transaction. User sessions cannot run the closing RPC.
 - Tightened local Host parsing and redirect control-character validation. Provider sign-out failures are reported.
 - Replaced the homepage's silent empty-catalogue fallback with an explicit error.
 - Fixed the documented local database variable to AUCTA_LOCAL_DATA_DIR, restricted it to a child of .local, and excluded local data/environment files from production tracing.
-- Added migration 20260912013000_order_mutations.sql: buyer-only mock pay (idempotent key), seller-only ship, buyer receipt, buyer review completing the sale with a pending mock payout. `order_snapshot` is not executable by anon/authenticated. Same-origin API routes at `/api/orders/[id]/{pay,ship,receive,review}`.
+- Added migration 20260914171559_order_mutations.sql: buyer-only mock pay (idempotent key), seller-only ship, buyer receipt, buyer review completing the sale with a pending mock payout. `order_snapshot` is not executable by anon/authenticated. Same-origin API routes at `/api/orders/[id]/{pay,ship,receive,review}`.
 
 ## Important files
 

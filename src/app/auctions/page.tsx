@@ -5,7 +5,11 @@ import { Catalogue } from '@/components/pages/catalogue';
 import { catalogueSort, catalogueStatus, queryValue } from '@/components/pages/helpers';
 import { publicError } from '@/components/pages/protect';
 
-export const metadata: Metadata = { title: 'Auctions' };
+export const metadata: Metadata = {
+  title: 'Auctions',
+  description: 'Browse live and upcoming collectible auctions on AUCTA.',
+  alternates: { canonical: '/auctions' },
+};
 
 export default async function AuctionsPage({
   searchParams,

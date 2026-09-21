@@ -8,13 +8,29 @@ import { AuctionLive } from '@/components/pages/auction-live';
 import { Gallery } from '@/components/pages/gallery';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 import { publicError } from '@/components/pages/protect';
+import { auctionStructuredData, serializeJsonLd } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   try {
     const { slug } = await params;
     const detail = await getAuction(slug);
     if (!detail) return { title: 'Auction' };
-    return { title: detail.auction.title, description: detail.auction.subtitle || detail.auction.description.slice(0,160), alternates:{canonical:'/auction/'+detail.auction.slug} };
+    const auction = detail.auction;
+    const description = (auction.subtitle || auction.description || `${auction.condition} ${auction.category} offered on AUCTA.`).trim().slice(0, 160);
+    return {
+      title: auction.title,
+      description,
+      alternates: { canonical: `/auction/${auction.slug}` },
+      robots: auction.sample ? { index: false, follow: false } : undefined,
+      openGraph: {
+        type: 'website',
+        title: auction.title,
+        description,
+        url: `/auction/${auction.slug}`,
+        images: auction.images.map(image => ({ url: image, alt: auction.imageAlt || auction.title })),
+      },
+      twitter: { card: 'summary_large_image', title: auction.title, description, images: auction.images },
+    };
   } catch { return { title: 'Auction' }; }
 }
 export default async function AuctionPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -28,6 +44,7 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
   const location = [auction.seller.city, auction.seller.province].filter(Boolean).join(', ');
   const attributes = Object.entries(auction.attributes);
   return <article className="page auction-detail">
+    {!auction.sample && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(auctionStructuredData(auction)) }} />}
     {auction.sample&&<p className="notice auction-sample">Fictional development inventory. This object is not a real consignment.</p>}
     <div className="auction-summary">
       <p className="eyebrow">{auction.category} · {auction.brand}</p>

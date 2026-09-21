@@ -5,7 +5,7 @@ import { SignInForm } from '@/components/pages/sign-in-form';
 import { queryValue, safeNext } from '@/components/pages/helpers';
 import { intentDescription } from '@/lib/sign-in-intent';
 
-export const metadata: Metadata = { title: 'Sign in' };
+export const metadata: Metadata = { title: 'Sign in', robots: { index: false, follow: false } };
 
 export default async function SignInPage({
   searchParams,

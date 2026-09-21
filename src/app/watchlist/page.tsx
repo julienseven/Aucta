@@ -5,7 +5,7 @@ import { getWatchlist } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
 import { money } from '@/components/pages/helpers';
 
-export const metadata: Metadata = { title: 'Watchlist' };
+export const metadata: Metadata = { title: 'Watchlist', robots: { index: false, follow: false } };
 
 export default async function WatchlistPage() {
   const result = await loadProtected('/watchlist', getWatchlist);

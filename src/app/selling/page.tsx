@@ -6,7 +6,7 @@ import { loadProtected } from '@/components/pages/protect';
 import { NewListingButton } from '@/components/pages/listing-writer';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 
-export const metadata: Metadata = { title: 'Selling' };
+export const metadata: Metadata = { title: 'Selling', robots: { index: false, follow: false } };
 
 const LIVE = new Set(['LIVE', 'SCHEDULED']);
 const SOLD = new Set(['PAID', 'FULFILLMENT', 'COMPLETED']);
@@ -94,7 +94,7 @@ export default async function SellingPage() {
       <section>
         <h2>Listings</h2>
         {auctions.length === 0 ? (
-          <p className="empty-state">No lots on this desk yet.</p>
+          <p className="empty-state">No lots on this desk yet. Use “New listing” above to begin a draft; nothing is published until review.</p>
         ) : (
           <>
             {groups.filter(group => group.items.length > 0).map(group => (

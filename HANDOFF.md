@@ -1,6 +1,6 @@
 # AUCTA — implementation handoff
 
-Updated 21 September 2026 after the guided-flow UX implementation.
+Updated 21 September 2026 after the accessibility, gallery and SEO polish milestone.
 
 ## UX implementation checkpoint
 
@@ -8,7 +8,9 @@ See UX_DESIGN.md for the reference-to-implementation mapping. Added a single pri
 
 The follow-up batch now preserves bid and watch intentions through sign-in without performing an automatic mutation, contains keyboard focus in mobile navigation/search, groups seller inputs by task, requires real shipping details, and derives order guidance from recorded states. Exceptional payment, dispute, refund and cancellation states no longer imply progress that did not happen.
 
-Validation: typecheck, lint, 253 unit/database/service tests, and a production build passed. The complete browser suite passed all 12 scenarios in 2.4 minutes, including two-bidder competition, pay-to-review, mobile keyboard navigation, and bid/watch sign-in recovery. These results do not verify hosted dependencies or establish marketplace launch readiness.
+The M6 polish batch adds focus and announcement semantics, motion/contrast accommodations, an accessible responsive auction gallery with swipe and full-screen viewing, fail-closed indexing, canonical metadata, sitemap/robots output, public-only auction structured data, and route-level loading/error/empty states.
+
+Validation: typecheck, lint, 258 unit/database/service tests, and a production build passed. The complete browser suite passed all 14 scenarios in 2.2 minutes, including gallery keyboard/swipe/lightbox behavior at 320px, two-bidder competition, pay-to-review, mobile keyboard navigation, and bid/watch sign-in recovery. These results do not verify hosted dependencies or establish marketplace launch readiness.
 
 ## User decisions that persist
 
@@ -27,7 +29,7 @@ Validation: typecheck, lint, 253 unit/database/service tests, and a production b
 | M3 seller | Seller onboarding, listing drafts, autosave and submit exist locally. Submitted lots stay PENDING_REVIEW until an admin decision. |
 | M4 moderation | Admin can approve or reject listings and seller applications with a required reason. Approve publishes a lot (`SCHEDULED` or `LIVE`); reject returns it to an editable `REJECTED` state. Decisions write `admin_actions` and `audit_logs` via `private.audit` and notify the seller. Reports, disputes and account suspension still have no mutation endpoints. |
 | M5 transactions | Local mock loop is connected: `pay_order` → `ship_order` → `confirm_received` → `review_order`. SQL is the order of record (lock auction, then order). Payments persist as `provider='mock'`; payouts stay `pending`. Seeded completed orders remain fictional fixtures. Real payment providers, webhooks, refunds and payouts are not implemented. |
-| M6 polish | Editorial UI, mobile layout, filters, sold archive and basic metadata exist. Further accessibility, SEO (sitemap/robots/structured data), gallery zoom/swipe and comprehensive empty/loading states remain. |
+| M6 polish | Editorial UI, mobile layout, filters, sold archive, accessible interaction semantics, auction gallery controls, route states, canonical metadata, sitemap/robots and sanitized auction structured data work locally. Independent assistive-technology testing and broader visual regression coverage remain. |
 | M7 launch | Not done. Local audit coverage has improved; cloud infrastructure, real concurrency, durable scheduling and a live payment provider are still gates. |
 
 ## Audit fixes applied
@@ -77,14 +79,14 @@ Browser tests use installed Google Chrome and a separate origin/database, and bu
 
 1. Keep the current local checks green; inspect the verification results below.
 2. Real PostgreSQL multi-connection concurrency tests when a local PostgreSQL/Docker runtime is available. PGlite queues requests and cannot prove row-lock contention. Hosted durable closing remains unverified.
-3. M6 polish (accessibility, SEO, gallery, empty/loading). Reports/disputes/suspension remain later trust-safety work. Real payment providers stay deferred under the local-only decision.
+3. Reports/disputes/suspension remain later trust-safety work. Independent assistive-technology testing and broader visual regression coverage remain useful M6 follow-ups. Real payment providers stay deferred under the local-only decision.
 4. Only revisit cloud setup when the user changes the local-only decision.
 
 ## Verification results
 
-- Unit/service/database tests: **253 passed across 14 files** (21 September). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, sign-in intent validation, order-state presentation, local closer gates, order API contracts, and negative permissions under PGlite.
+- Unit/service/database tests: **258 passed across 16 files** (21 September). Includes seller apply/draft/submit, listing/seller moderate SQL, order pay/ship/receive/review, sign-in intent validation, order-state presentation, SEO sanitization, accessibility semantics, local closer gates, order API contracts, and negative permissions under PGlite.
 - Typecheck: passed on 21 September.
 - Lint: full project passed on 21 September with no warnings.
 - Production build: passed on 21 September, including `/api/orders/[id]/pay|ship|receive|review` and instrumentation.
-- Browser verification: **12 passed** (2.4m with `AUCTA_E2E_SKIP_BUILD=true` after a successful production build). Includes Hasselblad close → Nadia mock pay at 320px → Raka ship → Nadia receive/review, plus mobile focus containment and explicit bid/watch recovery after sign-in. Catalogue, auth, bidding, seller draft, and admin approve still pass.
+- Browser verification: **14 passed** (2.2m with `AUCTA_E2E_SKIP_BUILD=true` after a successful production build). Includes responsive gallery selection/swipe/full-screen focus, Hasselblad close → Nadia mock pay at 320px → Raka ship → Nadia receive/review, mobile focus containment and explicit bid/watch recovery after sign-in. Catalogue, auth, bidding, seller draft, and admin approve still pass.
 - Hosted Supabase Auth/Realtime/Storage, durable hosted closing, real multi-connection PostgreSQL concurrency, and live payment providers remain unverified. Reports/disputes/suspension have no mutation endpoints. Mock checkout does not collect money.

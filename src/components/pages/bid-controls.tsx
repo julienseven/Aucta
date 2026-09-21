@@ -107,7 +107,7 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
       )}
       <Dialog open={open} onClose={() => setOpen(false)} title="Place your bid">
         <p className="muted">Enter your private maximum. AUCTA bids only as far as needed to lead, and other bidders never see this number.</p>
-        <form className="form" onSubmit={event => { event.preventDefault(); void submit(); }}>
+        <form className="form" aria-busy={busy} onSubmit={event => { event.preventDefault(); void submit(); }}>
           <div className="field">
             <label className="field-label" htmlFor="bid-amount">Your maximum (IDR)</label>
             <input
@@ -118,9 +118,10 @@ export function BidControls({ auction, signedIn, onAccepted }: { auction: Auctio
               autoComplete="off"
               value={amount}
               onChange={event => setAmount(event.target.value)}
+              aria-describedby="bid-amount-help"
               required
             />
-            <p className="field-help">Minimum {money(auction.minimumBid)}{parsePricePreview(amount)}</p>
+            <p className="field-help" id="bid-amount-help">Minimum {money(auction.minimumBid)}{parsePricePreview(amount)}</p>
           </div>
           <button className="button" type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Confirm maximum'}</button>
           <Feedback message={message} error={failed} />

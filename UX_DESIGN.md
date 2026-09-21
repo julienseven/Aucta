@@ -13,6 +13,10 @@ Applied from the supplied design-system, UX psychology and user-flow boards and 
 - Bid and watch intentions survive sign-in in the return URL, but the user must review and confirm them after authentication. Consumed intentions are removed so reloads cannot replay them.
 - Mobile navigation and search use keyboard-contained modal panels, return focus to their triggers and close when the desktop layout takes over.
 - Seller listing fields are grouped by object details, imagery and auction terms. Shipment requires real carrier and tracking values; order progress is derived from recorded milestones and pauses honestly in exceptional states.
+- Shared controls now expose reliable focus, announcement, busy and current-page semantics, with reduced-motion, increased-contrast and forced-color support.
+- Auction imagery has a stable responsive frame, keyboard thumbnails, swipe and previous/next navigation, failure fallbacks, and a focus-managed full-screen view.
+- Public routes provide canonical metadata, a fail-closed robots policy, sitemap entries and public-only auction structured data. Private routes are explicitly excluded from indexing.
+- High-value catalogue, account, watchlist, seller and order routes have truthful loading, error and empty states without invented inventory or progress.
 
 ## Rules for future changes
 
@@ -20,4 +24,4 @@ Prefer one primary action, recognizable labels, accessible controls, contextual 
 
 ## Remaining opportunities
 
-A comprehensive accessibility audit, gallery interactions, stronger empty/loading states and SEO remain separate follow-up improvements. Cloud authentication, payments, durable scheduling and multi-connection concurrency remain existing launch gates.
+Independent assistive-technology testing and broader visual regression coverage remain useful follow-ups. Cloud authentication, payments, durable scheduling and multi-connection concurrency remain existing launch gates.

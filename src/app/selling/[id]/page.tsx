@@ -6,7 +6,7 @@ import { requirePageUser } from '@/components/pages/protect';
 import { ServiceError } from '@/lib/server/errors';
 import { callRpc } from '@/lib/server/repository';
 
-export const metadata: Metadata = { title: 'Listing writer' };
+export const metadata: Metadata = { title: 'Listing writer', robots: { index: false, follow: false } };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

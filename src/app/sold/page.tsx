@@ -5,7 +5,11 @@ import { Catalogue } from '@/components/pages/catalogue';
 import { catalogueSort, queryValue } from '@/components/pages/helpers';
 import { publicError } from '@/components/pages/protect';
 
-export const metadata: Metadata = { title: 'Price archive' };
+export const metadata: Metadata = {
+  title: 'Price archive',
+  description: 'Explore settled AUCTA lots and the prices the market reached.',
+  alternates: { canonical: '/sold' },
+};
 
 export default async function SoldPage({
   searchParams,

@@ -74,6 +74,7 @@ export function SignInForm({ local, next, errorCode }: { local: boolean; next: s
       )}
       <form
         className="form"
+        aria-busy={busy === 'email'}
         onSubmit={event => {
           event.preventDefault();
           void run('email', async () => {
@@ -97,12 +98,13 @@ export function SignInForm({ local, next, errorCode }: { local: boolean; next: s
             placeholder="you@example.com"
           />
         </div>
-        <button className="button" type="submit" disabled={busy !== null}>{busy === 'email' ? 'Working…' : 'Email me a sign-in link'}</button>
+        <button className="button" type="submit" disabled={busy !== null} aria-busy={busy === 'email'}>{busy === 'email' ? 'Working…' : 'Email me a sign-in link'}</button>
       </form>
       <button
         className="button button-outline"
         type="button"
         disabled={busy !== null}
+        aria-busy={busy === 'google'}
         onClick={() => run('google', async () => {
           const result = await mutate<{ url?: string }>('/api/auth/google', { next: destination });
           if (!result.url || !httpUrl(result.url)) throw new Error('Google sign-in is unavailable.');

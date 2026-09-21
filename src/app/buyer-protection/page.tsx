@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MARKETPLACE_CONFIG } from '@/lib/config';
 import { PolicyPage } from '@/components/pages/policy';
 
-export const metadata: Metadata = { title: 'Buyer protection' };
+export const metadata: Metadata = { title: 'Buyer protection', alternates: { canonical: '/buyer-protection' } };
 
 export default function BuyerProtectionPage() {
   const hours = MARKETPLACE_CONFIG.paymentWindowMs / 3_600_000;

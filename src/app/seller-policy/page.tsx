@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MARKETPLACE_CONFIG } from '@/lib/config';
 import { PolicyPage } from '@/components/pages/policy';
 
-export const metadata: Metadata = { title: 'Seller standards' };
+export const metadata: Metadata = { title: 'Seller standards', alternates: { canonical: '/seller-policy' } };
 
 export default function SellerPolicyPage() {
   const sellerFee = MARKETPLACE_CONFIG.sellerFeeBps / 100;

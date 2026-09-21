@@ -15,6 +15,7 @@ export function SellerApplyForm() {
   return (
     <form
       className="form"
+      aria-busy={busy}
       onSubmit={event => {
         event.preventDefault();
         void (async () => {
@@ -46,7 +47,7 @@ export function SellerApplyForm() {
         <label className="field-label" htmlFor="shop-province">Province</label>
         <input className="input" id="shop-province" name="province" maxLength={80} required minLength={2} autoComplete="address-level1" value={province} onChange={event => setProvince(event.target.value)} />
       </div>
-      <button className="button" type="submit" disabled={busy}>{busy ? 'Working…' : 'Open a seller desk'}</button>
+      <button className="button" type="submit" disabled={busy} aria-busy={busy}>{busy ? 'Working…' : 'Open a seller desk'}</button>
       <Feedback message={message} error={failed} />
     </form>
   );

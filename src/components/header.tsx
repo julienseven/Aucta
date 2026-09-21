@@ -68,21 +68,22 @@ export function Header({user:initialUser,local}:{user:User|null;local:boolean}) 
  },[router,initialUser]);
  // Always use the verified server identity, including an explicit signed-out null.
  const displayedUser=initialUser;
+ const current=(href:string)=>href==='/' ? path==='/' : path===href || path.startsWith(`${href}/`);
  return <>
    <a className="skip-link" href="#main">Skip to content</a>
    {local&&<div className="development-bar"><span className="status-dot"/> PRIVATE PREVIEW <span className="development-separator">/</span> Fictional inventory. Local development only.</div>}
    <header className="site-header">
      <Link href="/" className="wordmark" aria-label="AUCTA home">AUCTA<span>®</span></Link>
      <nav className="desktop-nav" aria-label="Main navigation">
-       <Link className={path==='/auctions'?'active':''} href="/auctions">Auctions</Link>
+       <Link className={path==='/auctions'?'active':''} href="/auctions" aria-current={current('/auctions')?'page':undefined}>Auctions</Link>
        <Link href="/auctions?category=watches">Categories</Link>
-       <Link className={path==='/sold'?'active':''} href="/sold">Price archive</Link>
-       <Link href="/sell">Sell with us <ArrowUpRight size={13}/></Link>
+       <Link className={path==='/sold'?'active':''} href="/sold" aria-current={current('/sold')?'page':undefined}>Price archive</Link>
+       <Link href="/sell" aria-current={current('/sell')?'page':undefined}>Sell with us <ArrowUpRight size={13} aria-hidden="true"/></Link>
      </nav>
      <div className="header-actions">
        <button ref={searchTrigger} type="button" className="icon-button" aria-label="Search auctions" aria-expanded={search} aria-controls="header-search-dialog" aria-haspopup="dialog" onClick={()=>setPanel('search')}><Search size={20}/></button>
        <Link className="icon-button watch-nav" href="/watchlist" aria-label="Watchlist"><Heart size={20}/></Link>
-       {displayedUser?<Link className="account-link" href="/account"><UserRound size={18}/><span>{displayedUser.name.split(' ')[0]}</span></Link>:<><Link className="sign-in-link" href="/sign-in">Sign in</Link><Link className="join-button" href="/sign-in">Join AUCTA <ArrowUpRight size={14}/></Link></>}
+       {displayedUser?<Link className="account-link" href="/account" aria-label={`Account for ${displayedUser.name}`} aria-current={current('/account')?'page':undefined}><UserRound size={18} aria-hidden="true"/><span>{displayedUser.name.split(' ')[0]}</span></Link>:<><Link className="sign-in-link" href="/sign-in" aria-current={current('/sign-in')?'page':undefined}>Sign in</Link><Link className="join-button" href="/sign-in">Join AUCTA <ArrowUpRight size={14} aria-hidden="true"/></Link></>}
        <button ref={menuTrigger} type="button" className="icon-button mobile-menu" aria-label="Open menu" aria-expanded={menu} aria-controls="header-menu-dialog" aria-haspopup="dialog" onClick={()=>setPanel('menu')}><Menu/></button>
      </div>
    </header>
@@ -95,7 +96,7 @@ export function Header({user:initialUser,local}:{user:User|null;local:boolean}) 
      }}><Search size={20}/><input name="q" aria-label="Search the catalogue" placeholder="An object, a maker, a story…"/><button type="submit" className="text-link">Search <ArrowUpRight size={16}/></button></form>
    </HeaderDialog>}
    {menu&&<HeaderDialog id="header-menu-dialog" title="Mobile menu" trigger={menuTrigger} onClose={closePanel} mobile>
-     <nav className="mobile-nav" aria-label="Mobile navigation">{[['Auctions','/auctions'],['Categories','/auctions?category=watches'],['Price archive','/sold'],['Sell with us','/sell'],['Watchlist','/watchlist'],[displayedUser?'My account':'Sign in',displayedUser?'/account':'/sign-in']].map(([label,href])=><Link key={href} href={href} onClick={()=>{closePanel();router.refresh();}}>{label}<ArrowUpRight size={18}/></Link>)}</nav>
+     <nav className="mobile-nav" aria-label="Mobile navigation">{[['Auctions','/auctions'],['Categories','/auctions?category=watches'],['Price archive','/sold'],['Sell with us','/sell'],['Watchlist','/watchlist'],[displayedUser?'My account':'Sign in',displayedUser?'/account':'/sign-in']].map(([label,href])=>{const pathname=href.split('?')[0];return <Link key={href} href={href} aria-current={!href.includes('?')&&current(pathname)?'page':undefined} onClick={()=>{closePanel();router.refresh();}}>{label}<ArrowUpRight size={18} aria-hidden="true"/></Link>;})}</nav>
    </HeaderDialog>}
  </>;
 }

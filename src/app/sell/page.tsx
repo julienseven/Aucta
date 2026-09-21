@@ -4,7 +4,11 @@ import { MARKETPLACE_CONFIG } from '@/lib/config';
 import { getCurrentUser } from '@/lib/server/marketplace';
 import { SellerApplyForm } from '@/components/pages/seller-apply-form';
 
-export const metadata: Metadata = { title: 'Sell with AUCTA' };
+export const metadata: Metadata = {
+  title: 'Sell with AUCTA',
+  description: 'Learn how AUCTA reviews sellers and collectible listings before they reach the auction floor.',
+  alternates: { canonical: '/sell' },
+};
 
 export default async function SellPage() {
   const user = await getCurrentUser();

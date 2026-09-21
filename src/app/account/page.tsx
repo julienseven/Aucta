@@ -6,7 +6,7 @@ import { loadProtected } from '@/components/pages/protect';
 import { SignOutButton } from '@/components/pages/sign-out-button';
 import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 
-export const metadata: Metadata = { title: 'Your account' };
+export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
 
 export default async function AccountPage() {
   const result = await loadProtected('/account', getAccountData);
@@ -74,7 +74,7 @@ export default async function AccountPage() {
       <section>
         <h2>Won and purchases</h2>
         {purchases.length === 0 ? (
-          <p className="empty-state">No purchases yet.</p>
+          <p className="empty-state">No purchases yet. <Link href="/auctions">Browse open auctions</Link>.</p>
         ) : (
           <table className="table">
             <thead>

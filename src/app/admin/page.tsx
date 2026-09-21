@@ -3,7 +3,7 @@ import { getAdminData } from '@/lib/server/marketplace';
 import { loadProtected } from '@/components/pages/protect';
 import { AdminDesk } from '@/components/pages/admin-desk';
 
-export const metadata: Metadata = { title: 'Admin' };
+export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 
 export default async function AdminPage() {
   const result = await loadProtected('/admin', getAdminData);

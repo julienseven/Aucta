@@ -4,7 +4,7 @@ import { formatIDR } from '@/lib/auction';
 import { MARKETPLACE_CONFIG } from '@/lib/config';
 import { PolicyPage } from '@/components/pages/policy';
 
-export const metadata: Metadata = { title: 'How bidding works' };
+export const metadata: Metadata = { title: 'How bidding works', alternates: { canonical: '/auction-rules' } };
 
 export default function AuctionRulesPage() {
   const extension = MARKETPLACE_CONFIG.extensionWindowMs / 1000;

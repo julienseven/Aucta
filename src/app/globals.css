@@ -102,6 +102,10 @@
     min-height: 40vh;
   }
 
+  main#main:focus {
+    outline: none;
+  }
+
   @media (max-width: 959px) {
     body:has(.sticky-bid) main#main {
       padding-bottom: calc(var(--bid-bar) + env(safe-area-inset-bottom, 0px));
@@ -184,6 +188,37 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --muted-ink: #3f3e39;
+    --line: #88847b;
+  }
+
+  .button:disabled,
+  .card-watch:disabled,
+  .join-button:disabled {
+    opacity: 0.7;
+  }
+}
+
+@media (forced-colors: active) {
+  .button,
+  .join-button,
+  .card-watch,
+  .icon-button,
+  .alert,
+  .badge,
+  .dialog,
+  .header-dialog {
+    forced-color-adjust: auto;
+  }
+
+  .status-dot {
+    border: 1px solid ButtonText;
   }
 }
 

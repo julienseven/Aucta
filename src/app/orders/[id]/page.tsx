@@ -6,7 +6,7 @@ import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
 import { OrderActions } from '@/components/pages/order-actions';
 import { OrderProgress } from '@/components/pages/order-progress';
 
-export const metadata: Metadata = { title: 'Order' };
+export const metadata: Metadata = { title: 'Order', robots: { index: false, follow: false } };
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

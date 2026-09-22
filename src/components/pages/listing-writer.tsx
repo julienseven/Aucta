@@ -394,13 +394,25 @@ export function ListingWriter({ listingId, initial }: { listingId: string; initi
         <p><Link href="/selling">Back to your lots</Link></p>
       </header>
       {pending && (
-        <p className="notice" role="status">This lot is awaiting moderation. It is not live and is not in the catalogue.</p>
+        <div className="workflow-callout workflow-review" role="status">
+          <span className="eyebrow">Awaiting review</span>
+          <strong>This lot is in moderation.</strong>
+          <p>It is not live and will not appear in the catalogue until an administrator approves it.</p>
+        </div>
       )}
       {rejected && (
-        <p className="notice" role="status">This lot was not approved. Edit it and submit again for review. It is not live and is not in the catalogue.</p>
+        <div className="workflow-callout workflow-rejected" role="status">
+          <span className="eyebrow">Needs attention</span>
+          <strong>Review the feedback and resubmit.</strong>
+          <p>This lot was not approved and remains out of the catalogue until it is edited and re-submitted.</p>
+        </div>
       )}
       {frozen && !pending && (
-        <p className="notice" role="status">This lot can no longer be edited from the writer.</p>
+        <div className="workflow-callout workflow-locked" role="status">
+          <span className="eyebrow">Locked</span>
+          <strong>This lot is no longer editable.</strong>
+          <p>It has moved beyond the draft flow and can only be viewed in its current state.</p>
+        </div>
       )}
       <form
         className="form listing-writer"

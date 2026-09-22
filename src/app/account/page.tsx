@@ -42,6 +42,11 @@ export default async function AccountPage() {
           <Link className="button" href={action.href}>{action.label}</Link>
         </article>)}</div>
       </section>}
+      <section className="account-summary-card" aria-label="Your summary">
+        <span className="eyebrow">Account overview</span>
+        <strong>{bidding.length + purchases.length + watching.length}</strong>
+        <small>items in your active activity</small>
+      </section>
       <div className="dashboard-grid">
         <div className="stat"><span className="label">Active bids</span><strong>{bidding.length}</strong></div>
         <div className="stat"><span className="label">Watching</span><strong>{watching.length}</strong></div>

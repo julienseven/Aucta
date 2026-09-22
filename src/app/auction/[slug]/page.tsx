@@ -44,6 +44,12 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
   const { auction } = detail;
   const location = [auction.seller.city, auction.seller.province].filter(Boolean).join(', ');
   const attributes = Object.entries(auction.attributes);
+  const factItems = [
+    { label: 'Condition', value: auction.condition },
+    { label: 'Starts', value: formatWhen(auction.startsAt) },
+    { label: 'Closes', value: formatWhen(auction.endsAt) },
+    { label: 'Shipping', value: money(auction.shippingAmount) },
+  ];
   return <article className="page auction-detail">
     {!auction.sample && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(auctionStructuredData(auction)) }} />}
     {auction.sample&&<p className="notice auction-sample">Fictional development inventory. This object is not a real consignment.</p>}
@@ -52,6 +58,14 @@ export default async function AuctionPage({ params }: { params: Promise<{ slug: 
       <h1 className="page-title">{auction.title}</h1>
       {auction.subtitle&&<p>{auction.subtitle}</p>}
       <p className="muted">{auction.condition}{auction.attributes.year?` · ${auction.attributes.year}`:''} · {statusLabel(auction.status)}</p>
+      <div className="auction-meta-grid" aria-label="Auction summary facts">
+        {factItems.map((item) => (
+          <div key={item.label} className="auction-meta-item">
+            <span className="label">{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
       <aside className="bid-trust" aria-label="Seller and buyer protection">
         <p><ShieldCheck size={16}/><span><strong>{auction.seller.verified ? 'Verified seller' : 'Seller profile'}</strong><small>{auction.seller.completedSales} completed sales{auction.seller.rating != null ? ` · ${auction.seller.rating.toFixed(1)} rating` : ''}</small></span></p>
         <p><span><strong>{money(auction.shippingAmount)} shipping</strong><small><Link href="/buyer-protection">Buyer protection</Link> · <Link href="/auction-rules">Auction rules</Link></small></span></p>

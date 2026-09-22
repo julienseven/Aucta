@@ -44,14 +44,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <p className="muted">{statusLabel(order.status)} · <Link href={`/auction/${order.auction.slug}`}>View lot</Link></p>
       </header>
       <OrderProgress order={order} />
-      <div className="dashboard-grid">
+      <div className="dashboard-grid order-metrics">
         <div className="stat"><span className="label">Winning bid</span><strong>{money(order.winningBid)}</strong></div>
         {buyer && <div className="stat"><span className="label">Buyer fee</span><strong>{money(order.buyerFee)}</strong></div>}
         {seller && <div className="stat"><span className="label">Seller fee</span><strong>{money(order.sellerFee)}</strong></div>}
         <div className="stat"><span className="label">Shipping</span><strong>{money(order.shippingAmount)}</strong></div>
         <div className="stat"><span className="label">Total</span><strong>{money(order.total)}</strong></div>
       </div>
-      {order.status === 'AWAITING_PAYMENT' && <p>Payment deadline {formatWhen(order.paymentDeadline)} (Jakarta).</p>}
+      {order.status === 'AWAITING_PAYMENT' && <div className="order-status-callout"><span className="eyebrow">Payment deadline</span><strong>{formatWhen(order.paymentDeadline)} (Jakarta)</strong></div>}
       <OrderActions order={order} buyer={buyer} seller={seller} mockPaymentEnabled={result.user.local} />
       <OrderDispute orderId={id} status={order.status} dispute={dispute} />
       {order.address && (

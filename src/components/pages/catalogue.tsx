@@ -44,6 +44,11 @@ export function Catalogue({
               </div>
               <p className="result-count" id="result-count">{auctions.length} {auctions.length === 1 ? 'lot' : 'lots'}</p>
             </header>
+            <div className="catalogue-summary-card" aria-live="polite">
+              <span className="eyebrow">Market overview</span>
+              <strong>{auctions.length}</strong>
+              <small>{values.status && values.status !== 'all' ? 'filtered lots in view' : 'lots currently in the catalogue'}</small>
+            </div>
             <div className="auction-grid catalogue-grid">
               {auctions.map((auction, index) => <AuctionCard key={auction.id} auction={auction} priority={index < 2} />)}
             </div>

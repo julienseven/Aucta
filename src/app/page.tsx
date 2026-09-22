@@ -30,6 +30,13 @@ export default async function Home() {
   const featured = live.find((auction) => auction.featured) ?? live[0];
   const sold = auctions.filter((auction) => ['COMPLETED', 'PAID', 'FULFILLMENT'].includes(auction.status));
   const ending = [...live].sort((a, b) => a.endsAt.localeCompare(b.endsAt)).slice(0, 3);
+  const verifiedSellers = new Set(auctions.filter((auction) => auction.seller.verified).map((auction) => auction.seller.id)).size;
+  const totalBids = live.reduce((sum, auction) => sum + auction.bidCount, 0);
+  const pulse = [
+    { label: 'Live lots', value: live.length, detail: live.length === 1 ? 'auction active' : 'auctions active' },
+    { label: 'Verified sellers', value: verifiedSellers, detail: verifiedSellers === 1 ? 'seller on the floor' : 'sellers on the floor' },
+    { label: 'Open bids', value: totalBids, detail: totalBids === 1 ? 'bid in motion' : 'bids in motion' },
+  ];
 
   return <>
     {catalogueUnavailable && <div className="page"><p className="error-banner" role="alert">The catalogue is temporarily unavailable. Please try again shortly.</p></div>}
@@ -67,6 +74,16 @@ export default async function Home() {
       <span>Browse categories</span>
       {categories.map(([name, slug]) => <Link key={slug} href={`/auctions?category=${slug}`}>{name}<ArrowUpRight size={13} aria-hidden="true" /></Link>)}
     </nav>
+
+    <section className="market-pulse" aria-label="Market overview">
+      {pulse.map((item) => (
+        <div key={item.label} className="market-pulse-card">
+          <span className="eyebrow">{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.detail}</small>
+        </div>
+      ))}
+    </section>
 
     <section className="section live-section" aria-labelledby="live-auctions-heading">
       <div className="section-heading"><div><span className="eyebrow"><span className="status-dot" /> Live now</span><h2 id="live-auctions-heading">On the auction floor.</h2></div><Link className="text-link" href="/auctions">View all auctions <ArrowUpRight size={17} aria-hidden="true" /></Link></div>

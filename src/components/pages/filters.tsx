@@ -18,6 +18,14 @@ export function Filters({ values, action = '/auctions', lockStatus }: { values: 
   const router = useRouter();
   const hasAdvanced = Boolean(values.category || values.condition || values.minPrice || values.maxPrice);
   const [showAdvanced, setShowAdvanced] = useState(hasAdvanced);
+  const activeCount = [
+    values.q,
+    values.category && values.category !== 'all' ? values.category : '',
+    values.condition && values.condition !== 'all' ? values.condition : '',
+    !lockStatus && values.status && values.status !== 'all' ? values.status : '',
+    values.minPrice,
+    values.maxPrice,
+  ].filter(Boolean).length;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +42,16 @@ export function Filters({ values, action = '/auctions', lockStatus }: { values: 
   }
 
   return (
-    <form className="filters" method="get" action={action} onSubmit={submit}>
+    <form className="filters filter-panel" method="get" action={action} onSubmit={submit} aria-labelledby="filter-panel-title">
+      <header className="filter-panel-header">
+        <div>
+          <p className="eyebrow">Catalogue tools</p>
+          <h2 id="filter-panel-title">Refine this view</h2>
+        </div>
+        <p className="filter-active-summary" role="status" aria-live="polite">
+          {activeCount === 0 ? 'No filters active' : `${activeCount} ${activeCount === 1 ? 'filter' : 'filters'} active`}
+        </p>
+      </header>
       <div className="filter-group">
         <label className="field-label" htmlFor="q">Search</label>
         <input className="input" id="q" name="q" defaultValue={values.q ?? ''} placeholder="An object, a maker, a story" />

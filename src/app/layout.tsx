@@ -24,5 +24,5 @@ export const metadata: Metadata = {
 export default async function RootLayout({children}:{children:React.ReactNode}){
   let user = null;
   try { user = await getCurrentUser(); } catch { user = null; }
-  return <html lang="en"><body><Header user={user} local={process.env.AUCTA_LOCAL_MODE==='true'}/><main id="main" tabIndex={-1}>{children}</main><Footer/></body></html>;
+  return <html lang="en" data-scroll-behavior="smooth"><body><Header user={user} local={process.env.AUCTA_LOCAL_MODE==='true'}/><main id="main" tabIndex={-1}>{children}</main><Footer/></body></html>;
 }

@@ -1,20 +1,119 @@
-import Link from 'next/link';
 import Image from 'next/image';
-import { browseAuctions } from '@/lib/server/marketplace';
+import Link from 'next/link';
 import { AuctionCard } from '@/components/auction-card';
 import { Countdown } from '@/components/countdown';
-import { ArrowUpRight, ArrowRight, ShieldCheck, Gavel, Eye } from '@/components/icons';
+import { ArrowRight, ArrowUpRight, Eye, Gavel, ShieldCheck } from '@/components/icons';
 import { formatIDR } from '@/lib/auction';
-export default async function Home(){
+import { browseAuctions } from '@/lib/server/marketplace';
+
+const categories = [
+  ['Watches', 'watches'],
+  ['Cameras', 'cameras'],
+  ['Cards', 'cards'],
+  ['Sneakers', 'sneakers'],
+  ['Design', 'design'],
+  ['Gaming', 'gaming'],
+] as const;
+
+const trustPrinciples = [
+  { number: '01', icon: ShieldCheck, title: 'Know the seller.', copy: 'Seller verification and clear condition standards help you assess every lot.', href: '/seller-policy', link: 'Seller standards' },
+  { number: '02', icon: Gavel, title: 'Let the market decide.', copy: 'Public bidding, private maximums and fair extensions keep competition transparent.', href: '/auction-rules', link: 'Auction rules' },
+  { number: '03', icon: Eye, title: 'Look closely.', copy: 'Detailed imagery and honest descriptions give you the context to bid carefully.', href: '/buyer-protection', link: 'Buyer protection' },
+] as const;
+
+export default async function Home() {
   let auctions: Awaited<ReturnType<typeof browseAuctions>> = [];
   let catalogueUnavailable = false;
   try { auctions = await browseAuctions(); } catch { catalogueUnavailable = true; }
-  const live=auctions.filter(a=>a.status==='LIVE');const featured=live.find(a=>a.featured)??live[0];const sold=auctions.filter(a=>['COMPLETED','PAID','FULFILLMENT'].includes(a.status));const ending=[...live].sort((a,b)=>a.endsAt.localeCompare(b.endsAt)).slice(0,3);return <>
-{catalogueUnavailable && <div className="page"><p className="error-banner" role="alert">The catalogue is temporarily unavailable. Please try again shortly.</p></div>}
-<section className="hero"><div className="hero-copy"><div className="eyebrow hero-eyebrow"><span className="little-line"/>THE EXTRAORDINARY, WITHIN REACH</div><h1>Rare things.<br/><em>Real prices.</em></h1><p>For the curious. The collectors. The ones who know.<br className="desktop-break"/> Discover remarkable objects. Decide what they’re worth.</p><Link className="button hero-cta" href="/auctions">Explore the auctions <ArrowUpRight size={18}/></Link><div className="hero-footnote"><span className="status-dot"/><span>OPEN BIDDING. ENDLESS POSSIBILITY.</span></div></div>{featured&&<div className="hero-feature"><div className="hero-image"><Image src={featured.images[0]||'/images/camera.png'} alt={featured.imageAlt} fill priority sizes="(max-width: 800px) 100vw, 55vw"/><div className="hero-lot"><span>THE COLLECTOR’S EDIT</span><span>LOT 001 / {featured.category.toUpperCase()}</span></div><span className="hero-image-caption">A moment in time. A lifetime of stories.</span><Link href={`/auction/${featured.slug}`} className="hero-image-link" aria-label={`View ${featured.title}`}><ArrowUpRight size={26}/></Link></div><div className="hero-auction-meta"><div><span className="eyebrow">IN THE SPOTLIGHT</span><Link href={`/auction/${featured.slug}`}>{featured.title}</Link><span className="hero-object-subtitle">{featured.condition} · {featured.seller.city}</span></div><div><span className="label">CURRENT BID</span><strong>{formatIDR(featured.currentPrice)}</strong><span>{featured.bidderCount} bidders · {featured.watchCount} watching</span></div><div className="hero-time"><span className="label"><span className="status-dot"/> LIVE AUCTION</span><Countdown endsAt={featured.endsAt} serverTime={featured.serverTime}/></div></div></div>}</section>
-<div className="category-strip"><span>FOLLOW YOUR CURIOSITY</span>{[['Watches','watches'],['Cameras','cameras'],['Cards','cards'],['Sneakers','sneakers'],['Design','design'],['Gaming','gaming']].map(([name,slug])=><Link key={slug} href={`/auctions?category=${slug}`}>{name}<ArrowUpRight size={13}/></Link>)}</div>
-<section className="section live-section"><div className="section-heading"><div><span className="eyebrow"><span className="status-dot"/> THE FLOOR IS OPEN</span><h2>Worth a closer look.</h2></div><Link className="text-link" href="/auctions">All live auctions <ArrowUpRight size={17}/></Link></div>{live.length>0?<div className="auction-grid">{live.slice(0,4).map(a=><AuctionCard key={a.id} auction={a}/>)}</div>:!catalogueUnavailable&&<p className="empty-state">There are no live auctions right now. <Link href="/auctions">See upcoming lots</Link>.</p>}</section>
-{ending.length>0&&<section className="ending-section section"><div className="ending-intro"><span className="eyebrow">YOUR NEXT CHAPTER</span><h2>Going,<br/><em>going…</em></h2><p>Some opportunities don’t wait.<br/>These auctions are entering their final act.</p><Link className="text-link" href="/auctions?sort=ending-soon">Ending soon <ArrowRight size={18}/></Link></div><div className="ending-list">{ending.map((a,i)=><Link href={`/auction/${a.slug}`} className="ending-row" key={a.id}><span className="ending-number">0{i+1}</span><div className="ending-thumb"><Image src={a.images[0]} alt={a.title} fill sizes="100px"/></div><div className="ending-object"><span className="eyebrow">{a.category}</span><h3>{a.title}</h3><span>{a.bidCount} bids · {a.condition}</span></div><div className="ending-price"><strong>{formatIDR(a.currentPrice)}</strong><Countdown endsAt={a.endsAt} serverTime={a.serverTime} compact/></div><ArrowUpRight size={21}/></Link>)}</div></section>}
-<section className="manifesto section"><span className="eyebrow">A MARKET BUILT ON KNOWING</span><h2>Good objects have a story.<br/><em>Great markets let it continue.</em></h2><div className="trust-grid"><div><ShieldCheck strokeWidth={1.2}/><h3>People you can trust.</h3><p>Seller verification and considered condition standards. Know who you’re buying from.</p><Link href="/seller-policy">Our seller standards <ArrowUpRight size={14}/></Link></div><div><Gavel strokeWidth={1.2}/><h3>The market decides.</h3><p>Transparent bidding. Private maximums. Fair extensions that give everyone time to respond.</p><Link href="/auction-rules">How auctions work <ArrowUpRight size={14}/></Link></div><div><Eye strokeWidth={1.2}/><h3>Look closer. Bid better.</h3><p>Detailed photography, honest descriptions, and a clear path to raise concerns.</p><Link href="/buyer-protection">Buying with confidence <ArrowUpRight size={14}/></Link></div></div></section>
-{sold.length>0&&<section className="section sold-section"><div className="section-heading"><div><span className="eyebrow">THE MARKET HAS SPOKEN</span><h2>Found their next home.</h2></div><Link className="text-link" href="/sold">Explore the price archive <ArrowUpRight size={17}/></Link></div><div className="auction-grid">{sold.slice(0,4).map(a=><AuctionCard key={a.id} auction={a}/>)}</div></section>}
-<section className="seller-banner"><div><span className="eyebrow">SOMETHING SPECIAL IN YOUR COLLECTION?</span><h2>Let the right people find it.</h2><p>A considered audience. An open market. Your object’s next chapter.</p></div><Link className="button button-light" href="/sell">Sell with AUCTA <ArrowUpRight size={18}/></Link></section></>}
+
+  const live = auctions.filter((auction) => auction.status === 'LIVE');
+  const featured = live.find((auction) => auction.featured) ?? live[0];
+  const sold = auctions.filter((auction) => ['COMPLETED', 'PAID', 'FULFILLMENT'].includes(auction.status));
+  const ending = [...live].sort((a, b) => a.endsAt.localeCompare(b.endsAt)).slice(0, 3);
+
+  return <>
+    {catalogueUnavailable && <div className="page"><p className="error-banner" role="alert">The catalogue is temporarily unavailable. Please try again shortly.</p></div>}
+
+    <section className="hero editorial-hero" aria-labelledby="home-heading">
+      <div className="hero-copy editorial-hero-copy">
+        <p className="eyebrow hero-eyebrow"><span className="little-line" />An Indonesian auction house for collectible objects</p>
+        <h1 id="home-heading">Rare things.<br /><em>Real prices.</em></h1>
+        <p>Discover considered objects, follow the bidding and decide what each one is worth.</p>
+        <Link className="button hero-cta" href="/auctions">Explore the auctions <ArrowUpRight size={18} aria-hidden="true" /></Link>
+      </div>
+
+      <figure className="editorial-hero-art">
+        <div className="editorial-hero-image">
+          <Image src="/images/aucta-editorial-hero.png" alt="An editorial still life of collectible objects in warm natural light" fill priority sizes="(max-width: 959px) 100vw, 58vw" />
+        </div>
+        <figcaption><span>AUCTA Editorial</span><span>Objects worth a closer look</span></figcaption>
+      </figure>
+
+      {featured && <article className="hero-feature featured-live-lot" aria-labelledby="featured-lot-title">
+        <div className="hero-image featured-live-image">
+          <Image src={featured.images[0] || '/images/camera.png'} alt={featured.imageAlt || featured.title} fill sizes="(max-width: 719px) 100vw, (max-width: 959px) 48vw, 32vw" />
+          <div className="hero-lot"><span><span className="status-dot" /> Live lot</span><span>{featured.category}</span></div>
+          <Link href={`/auction/${featured.slug}`} className="hero-image-link" aria-label={`View ${featured.title}`}><ArrowUpRight size={26} aria-hidden="true" /></Link>
+        </div>
+        <div className="hero-auction-meta featured-live-meta">
+          <div><span className="eyebrow">Featured auction</span><Link id="featured-lot-title" href={`/auction/${featured.slug}`}>{featured.title}</Link><span className="hero-object-subtitle">{featured.condition} · {featured.seller.city}</span></div>
+          <div><span className="label">Current bid</span><strong>{formatIDR(featured.currentPrice)}</strong><span>{featured.bidCount} {featured.bidCount === 1 ? 'bid' : 'bids'}</span></div>
+          <div className="hero-time"><span className="label">Time remaining</span><Countdown endsAt={featured.endsAt} serverTime={featured.serverTime} /></div>
+        </div>
+      </article>}
+    </section>
+
+    <nav className="category-strip category-tabs" aria-label="Browse by category">
+      <span>Browse categories</span>
+      {categories.map(([name, slug]) => <Link key={slug} href={`/auctions?category=${slug}`}>{name}<ArrowUpRight size={13} aria-hidden="true" /></Link>)}
+    </nav>
+
+    <section className="section live-section" aria-labelledby="live-auctions-heading">
+      <div className="section-heading"><div><span className="eyebrow"><span className="status-dot" /> Live now</span><h2 id="live-auctions-heading">On the auction floor.</h2></div><Link className="text-link" href="/auctions">View all auctions <ArrowUpRight size={17} aria-hidden="true" /></Link></div>
+      {live.length > 0 ? <div className="auction-grid">{live.slice(0, 4).map((auction) => <AuctionCard key={auction.id} auction={auction} />)}</div> : !catalogueUnavailable && <p className="empty-state">There are no live auctions right now. <Link href="/auctions">See upcoming lots</Link>.</p>}
+    </section>
+
+    <section className="collection-interlude section" aria-labelledby="collection-heading">
+      <div className="collection-intro"><p className="eyebrow">Follow your curiosity</p><h2 id="collection-heading">Two ways into the collection.</h2><p>Explore categories through editorial studies. The objects pictured here are AUCTA imagery, not live lots.</p></div>
+      <div className="collection-editorials">
+        <Link className="collection-editorial-card" href="/auctions?category=watches">
+          <div className="collection-editorial-image"><Image src="/images/aucta-watch-editorial.png" alt="AUCTA editorial study of a vintage watch" fill sizes="(max-width: 719px) 100vw, 50vw" /></div>
+          <span className="collection-editorial-label"><span><small>AUCTA Editorial</small>Watches</span><ArrowUpRight size={20} aria-hidden="true" /></span>
+        </Link>
+        <Link className="collection-editorial-card" href="/auctions?category=design">
+          <div className="collection-editorial-image"><Image src="/images/aucta-design-editorial.png" alt="AUCTA editorial study of collectible modern design" fill sizes="(max-width: 719px) 100vw, 50vw" /></div>
+          <span className="collection-editorial-label"><span><small>AUCTA Editorial</small>Design</span><ArrowUpRight size={20} aria-hidden="true" /></span>
+        </Link>
+      </div>
+    </section>
+
+    {ending.length > 0 && <section className="ending-section section" aria-labelledby="ending-heading">
+      <div className="ending-intro"><span className="eyebrow">Closing next</span><h2 id="ending-heading">Auctions nearing their close.</h2><p>Live countdowns use the auction server time. Late competitive bids may extend an auction.</p><Link className="text-link" href="/auctions?sort=ending-soon">View ending soon <ArrowRight size={18} aria-hidden="true" /></Link></div>
+      <div className="ending-list">{ending.map((auction, index) => <Link href={`/auction/${auction.slug}`} className="ending-row" key={auction.id}>
+        <span className="ending-number">0{index + 1}</span>
+        <div className="ending-thumb"><Image src={auction.images[0] || '/images/camera.png'} alt={auction.imageAlt || auction.title} fill sizes="100px" /></div>
+        <div className="ending-object"><span className="eyebrow">{auction.category}</span><h3>{auction.title}</h3><span>{auction.bidCount} {auction.bidCount === 1 ? 'bid' : 'bids'} · {auction.condition}</span></div>
+        <div className="ending-price"><strong>{formatIDR(auction.currentPrice)}</strong><Countdown endsAt={auction.endsAt} serverTime={auction.serverTime} compact /></div>
+        <ArrowUpRight size={21} aria-hidden="true" />
+      </Link>)}</div>
+    </section>}
+
+    <section className="manifesto section trust-principles" aria-labelledby="principles-heading">
+      <span className="eyebrow">How AUCTA works</span><h2 id="principles-heading">A market built on knowing.</h2>
+      <div className="trust-grid">{trustPrinciples.map((principle) => {
+        const Icon = principle.icon;
+        return <article className="trust-principle-card" key={principle.number}>
+          <div className="trust-principle-top"><span className="trust-principle-number">{principle.number}</span><Icon strokeWidth={1.2} aria-hidden="true" /></div>
+          <h3>{principle.title}</h3><p>{principle.copy}</p><Link href={principle.href}>{principle.link} <ArrowUpRight size={14} aria-hidden="true" /></Link>
+        </article>;
+      })}</div>
+    </section>
+
+    {sold.length > 0 && <section className="section sold-section" aria-labelledby="sold-heading">
+      <div className="section-heading"><div><span className="eyebrow">Price archive</span><h2 id="sold-heading">Where the market landed.</h2></div><Link className="text-link" href="/sold">Explore sold lots <ArrowUpRight size={17} aria-hidden="true" /></Link></div>
+      <div className="auction-grid">{sold.slice(0, 4).map((auction) => <AuctionCard key={auction.id} auction={auction} />)}</div>
+    </section>}
+
+    <section className="seller-banner"><div><span className="eyebrow">Something special in your collection?</span><h2>Let the right people find it.</h2><p>Open a seller desk, prepare an honest listing and submit it for review.</p></div><Link className="button button-light" href="/sell">Sell with AUCTA <ArrowUpRight size={18} aria-hidden="true" /></Link></section>
+  </>;
+}

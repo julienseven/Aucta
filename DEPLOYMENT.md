@@ -1,29 +1,11 @@
-# Deployment
+# AUCTA deployment
 
-Target later: Vercel plus a newly authorized, dedicated AUCTA Supabase project. Production is not live. Do not reuse Project Arena.
+Dedicated Supabase project: `edlvglhxsbigsoubdauj` (Singapore). Dedicated Vercel project: `aucta`, ID `prj_BVMbN29i6wlwq07UTciF1MCcYhTN`, team `julienseven`. Project Arena infrastructure is unrelated.
 
-Protected writes fail closed without real Supabase configuration. Local mode and mock payments must be disabled on a hosted host.
+AUCTA uses Drizzle over PostgreSQL and custom signed sessions. It does not use Supabase Auth. All 16 current public tables have RLS enabled; `anon` and `authenticated` lack table access. The server has a restricted `aucta_app` login. `drizzle/0002_server_database_access.sql` records the access policy. The credential is never committed. A separate `aucta_test` schema supports disposable hosted acceptance tests.
 
-## Environment
+The Vercel production environment has `DATABASE_URL`, `AUCTA_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_BASE_URL`, `AUCTA_DEMO_MODE=false`, `PAYMENT_PROVIDER=disabled`, and `DISABLE_SCHEDULER=true`. The database URL uses the verified Singapore transaction pooler on port 6543. The app bundles the Supabase Root 2021 CA and verifies the TLS server certificate. No Supabase browser key or service-role key is needed for this version.
 
-Copy from `.env.example`. Never commit secrets.
+The deployment must remain a non-transactional preview until SMTP delivery, a real Midtrans integration, a durable close/expiry scheduler, real inventory, and end-to-end two-user/provider acceptance are complete. Vercel Hobby cron cannot meet this auction's close cadence. The authenticated `/api/cron/close` route is available for a suitable scheduler but no production schedule is configured. Do not claim automatic closing while it is absent.
 
-| Variable | Role |
-| --- | --- |
-| `AUCTA_LOCAL_MODE` | `true` only for loopback development. Hosted deployments must set `false`. |
-| `APP_URL` | Exact public origin. HTTPS required when hosted. |
-| `LOCAL_AUTH_SECRET` | ≥32 characters. Local signed sessions only. Unused in production. |
-| `PAYMENT_PROVIDER` | `mock` is local-only. Disable mock payments when hosted. |
-| `AUCTA_LOCAL_DATA_DIR` | Optional PGlite directory. Default `.local/aucta-db`. Local only. |
-| `CRON_SECRET` | Bearer token for `/api/cron/close`. Generate before enabling the closer. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Dedicated AUCTA project URL. HTTPS. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/publishable key only. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only. Never `NEXT_PUBLIC_`. Required for hosted closing. |
-
-Apply and audit migrations before exposing the Data API. Configure SMTP and optional Google OAuth in Supabase. Callback allowlist: `/auth/callback`. Email token-hash: `/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
-
-## Closing cron
-
-`CRON_SECRET` protects `POST /api/cron/close` with `Authorization: Bearer <CRON_SECRET>`. Hosted mode also requires `SUPABASE_SERVICE_ROLE_KEY`. Closing must run on an external cadence independent of open browsers. Never expose the service role key to the client.
-
-Storage policies, upload scanning, Realtime, abuse controls, payment provider credentials/webhooks and payouts remain separate launch gates. Local tests do not verify them.
+Use `npm.cmd ci`, typecheck, lint, PostgreSQL integration tests using an isolated database/schema, and build before deploying. Then verify `/api/health`, catalogue behavior, unauthenticated write denial, and production logs. Live payment and SMTP secrets should be set only when the corresponding providers have been configured and tested.

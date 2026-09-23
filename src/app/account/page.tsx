@@ -1,130 +1,296 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { AuctionCard } from '@/components/auction-card';
-import { getAccountData } from '@/lib/server/marketplace';
-import { loadProtected } from '@/components/pages/protect';
-import { SignOutButton } from '@/components/pages/sign-out-button';
-import { formatWhen, money, statusLabel } from '@/components/pages/helpers';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { db } from "@/db";
+import { bids, lots, orders, watchlist } from "@/db/schema";
+import { and, desc, eq, or } from "drizzle-orm";
+import { getSessionUser } from "@/lib/auth";
+import { getDict } from "@/lib/i18n/server";
+import { SignOutButton } from "@/components/SignOutButton";
+import { LotCard } from "@/components/LotCard";
+import { OrdersPanel, type OrderRow } from "@/components/OrdersPanel";
+import { getWatchIds } from "@/lib/auctions";
+import { formatRupiah } from "@/lib/format";
+import { Reveal } from "@/components/Reveal";
+import {
+  IconArrow,
+  IconBell,
+  IconGavel,
+  IconHeart,
+  IconList,
+  IconUser,
+} from "@/components/icons";
 
-export const metadata: Metadata = { title: 'Your account', robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Your account",
+  description: "Your alias, bids and watched lots on AUCTA.",
+};
 
-export default async function AccountPage() {
-  const result = await loadProtected('/account', getAccountData);
-  if (!result.ok) {
+export const dynamic = "force-dynamic";
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ tab }, user, { dict }] = await Promise.all([
+    searchParams,
+    getSessionUser().catch(() => null),
+    getDict(),
+  ]);
+  const t = dict.account;
+
+  if (!user) {
     return (
-      <div className="page">
-        <header className="page-header"><h1 className="page-title">Your account</h1></header>
-        <p className="error-banner" role="alert">{result.error}</p>
+      <div className="page-enter mx-auto flex min-h-[70vh] w-full max-w-md flex-col items-center justify-center px-4 text-center">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-soft text-bronze-deep">
+          <IconUser size={28} />
+        </span>
+        <h1 className="mt-6 font-serif text-3xl">{t.needSignInTitle}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-ink">
+          {t.needSignInBody}
+        </p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/sign-in?next=/account"
+            className="btn btn-primary btn-lg"
+          >
+            {t.signIn} <IconArrow size={16} className="arrow" />
+          </Link>
+          <Link href="/auctions" className="btn btn-outline btn-lg">
+            {dict.nav.auctions}
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const { user, bidding, watching, orders, notifications } = result.data;
-  const purchases = orders.filter(order => order.buyerId === user.id);
-  const actions = [
-    ...bidding.filter(auction => auction.isLeading === false && typeof auction.ownMaximum === 'number').map(auction => ({ key: `bid-${auction.id}`, eyebrow: 'Outbid', title: auction.title, detail: `Next bid ${money(auction.minimumBid)}`, href: `/auction/${auction.slug}`, label: 'Bid again' })),
-    ...purchases.filter(order => order.status === 'AWAITING_PAYMENT').map(order => ({ key: `pay-${order.id}`, eyebrow: 'Payment due', title: order.auction.title, detail: `Pay ${money(order.total)} by ${formatWhen(order.paymentDeadline)}`, href: `/orders/${order.id}`, label: 'Open order' })),
-    ...purchases.filter(order => order.status === 'FULFILLMENT' && !order.receivedAt).map(order => ({ key: `receive-${order.id}`, eyebrow: 'In transit', title: order.auction.title, detail: order.trackingNumber ? `${order.carrier ?? 'Shipment'} · ${order.trackingNumber}` : 'Check delivery details', href: `/orders/${order.id}`, label: 'Track order' })),
-    ...purchases.filter(order => order.status === 'FULFILLMENT' && order.receivedAt && !order.review).map(order => ({ key: `review-${order.id}`, eyebrow: 'Finish the order', title: order.auction.title, detail: 'Your receipt is confirmed. Share an honest review.', href: `/orders/${order.id}`, label: 'Review seller' })),
+  const [myBids, watchedRows, leadingRows] = await Promise.all([
+    db
+      .select({
+        id: bids.id,
+        maxAmount: bids.maxAmount,
+        createdAt: bids.createdAt,
+        lot: lots,
+      })
+      .from(bids)
+      .innerJoin(lots, eq(bids.lotId, lots.id))
+      .where(eq(bids.userId, user.id))
+      .orderBy(desc(bids.createdAt))
+      .limit(8),
+    db
+      .select({ lot: lots })
+      .from(watchlist)
+      .innerJoin(lots, eq(watchlist.lotId, lots.id))
+      .where(eq(watchlist.userId, user.id))
+      .orderBy(desc(watchlist.createdAt))
+      .limit(4),
+    db
+      .select({ id: lots.id })
+      .from(lots)
+      .where(and(eq(lots.leadingAlias, user.alias), eq(lots.status, "live"))),
+  ]);
+  const watchIds = await getWatchIds(user.id);
+  const watched = watchedRows.map(
+    (r) => r.lot as unknown as typeof lots.$inferSelect,
+  );
+
+  const orderRows = await db
+    .select({ order: orders, lot: lots })
+    .from(orders)
+    .innerJoin(lots, eq(orders.lotId, lots.id))
+    .where(
+      or(eq(orders.buyerId, user.id), eq(lots.ownerId, user.id)),
+    )
+    .orderBy(desc(orders.createdAt));
+  const orderData: OrderRow[] = orderRows.map(({ order, lot }) => ({
+    id: order.id,
+    number: order.number,
+    status: order.status,
+    hammerAmount: Number(order.hammerAmount),
+    shippingCost: Number(order.shippingCost),
+    amountDue: Number(order.amountDue),
+    trackingNumber: order.trackingNumber,
+    carrier: order.carrier,
+    carrierStatus: order.carrierStatus,
+    shipmentProof: order.shipmentProof,
+    shippingLabel: order.shippingLabel,
+    shippingAddress: order.shippingAddress,
+    statusReason: order.statusReason,
+    paymentExpiresAt: order.paymentExpiresAt?.toISOString() ?? null,
+    paymentDueAt: order.paymentDueAt?.toISOString() ?? null,
+    paidAt: order.paidAt?.toISOString() ?? null,
+    shippedAt: order.shippedAt?.toISOString() ?? null,
+    deliveredAt: order.deliveredAt?.toISOString() ?? null,
+    completedAt: order.completedAt?.toISOString() ?? null,
+    refundedAt: order.refundedAt?.toISOString() ?? null,
+    title: lot.title,
+    slug: lot.slug,
+    image: lot.image,
+    role: order.buyerId === user.id ? "buyer" : "seller",
+  }));
+
+  const stats = [
+    { label: t.watching, value: watchIds.length, icon: IconHeart },
+    { label: t.bidsPlaced, value: myBids.length, icon: IconGavel },
+    { label: t.leadingNow, value: leadingRows.length, icon: IconArrow },
+    {
+      label: t.verification,
+      value: user.sellerVerified ? t.verified : t.collector,
+      icon: IconUser,
+    },
   ];
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <p className="eyebrow">Your AUCTA</p>
-        <h1 className="page-title">Hello, {user.name.split(' ')[0]}.</h1>
-        <p className="muted">{user.email ?? 'Signed in'}{user.local ? ' · Local development session' : ''}</p>
-      </header>
-      {actions.length > 0 && <section className="action-required" aria-labelledby="action-required-title">
-        <div><p className="eyebrow">Next steps</p><h2 id="action-required-title">Action required.</h2></div>
-        <div className="action-list">{actions.map(action => <article key={action.key}>
-          <div><p className="eyebrow">{action.eyebrow}</p><h3>{action.title}</h3><p className="muted">{action.detail}</p></div>
-          <Link className="button" href={action.href}>{action.label}</Link>
-        </article>)}</div>
-      </section>}
-      <section className="account-summary-card" aria-label="Your summary">
-        <span className="eyebrow">Account overview</span>
-        <strong>{bidding.length + purchases.length + watching.length}</strong>
-        <small>items in your active activity</small>
-      </section>
-      <div className="dashboard-grid">
-        <div className="stat"><span className="label">Active bids</span><strong>{bidding.length}</strong></div>
-        <div className="stat"><span className="label">Watching</span><strong>{watching.length}</strong></div>
-        <div className="stat"><span className="label">Purchases</span><strong>{purchases.length}</strong></div>
-      </div>
-      <p className="split">
-        <Link className="button-outline" href="/watchlist">Watchlist</Link>
-        {(user.role === 'seller' || user.role === 'admin') && <Link className="button-outline" href="/selling">Selling desk</Link>}
-        {user.role === 'buyer' && <Link className="button-outline" href="/sell">Sell with AUCTA</Link>}
-        {user.role === 'admin' && <Link className="button-outline" href="/admin">Admin</Link>}
-        <SignOutButton />
-      </p>
-      <section>
-        <h2>Bidding</h2>
-        {bidding.length === 0 ? (
-          <p className="empty-state">You have no live bids. <Link href="/auctions">Find something worth competing for</Link>.</p>
+    <div className="page-enter mx-auto w-full max-w-[94rem] px-4 py-12 sm:px-6 lg:px-10">
+      <Reveal>
+        <p className="eyebrow">{t.title}</p>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-espresso font-serif text-2xl text-canvas sm:h-16 sm:w-16">
+              {user.alias.slice(0, 1)}
+            </span>
+            <div className="min-w-0">
+              <h1 className="truncate font-serif text-2xl sm:text-3xl">
+                {user.alias}
+              </h1>
+              <p className="truncate text-sm text-muted">{user.email}</p>
+            </div>
+          </div>
+          <SignOutButton />
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <TabLink href="/account" active={tab !== "orders"}>
+            <IconUser size={14} /> Overview
+          </TabLink>
+          <TabLink href="/account?tab=orders" active={tab === "orders"}>
+            <IconList size={14} /> Orders
+            {orderData.length > 0 && (
+              <span className="rounded-full bg-soft px-1.5 text-[0.62rem] font-bold">
+                {orderData.length}
+              </span>
+            )}
+          </TabLink>
+          <TabLink href="/alerts">
+            <IconBell size={14} /> Alerts
+          </TabLink>
+        </div>
+      </Reveal>
+
+      {tab === "orders" ? (
+        <section className="mt-10">
+          <OrdersPanel orders={orderData} />
+        </section>
+      ) : (
+        <>
+      <Reveal delay={100}>
+        <dl className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="surface p-5">
+              <s.icon size={18} className="text-bronze-deep" />
+              <dd className="mt-3 font-serif text-2xl">{s.value}</dd>
+              <dt className="mt-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted">
+                {s.label}
+              </dt>
+            </div>
+          ))}
+        </dl>
+      </Reveal>
+
+      <section className="mt-14">
+        <Reveal className="mb-5 flex items-end justify-between">
+          <h2 className="font-serif text-2xl">{t.recentBids}</h2>
+        </Reveal>
+        {myBids.length === 0 ? (
+          <div className="surface-soft p-8 text-center text-sm text-muted-ink">
+            {t.noBids}{" "}
+            <Link
+              href="/auctions"
+              className="font-semibold text-espresso underline-offset-4 hover:underline"
+            >
+              {t.explore}
+            </Link>
+            .
+          </div>
         ) : (
-          <div className="auction-grid">
-            {bidding.map(auction => (
-              <div key={auction.id}>
-                {auction.isLeading === true && <p className="badge">You are leading</p>}
-                {auction.isLeading === false && typeof auction.ownMaximum === 'number' && <p className="badge">Outbid</p>}
-                {typeof auction.ownMaximum === 'number' && <p className="muted">Your maximum {money(auction.ownMaximum)}</p>}
-                <AuctionCard auction={auction} />
-              </div>
+          <div className="overflow-hidden rounded-card border border-line bg-canvas">
+            {myBids.map((b) => {
+              const lot = b.lot as unknown as typeof lots.$inferSelect;
+              return (
+                <Link
+                  key={b.id}
+                  href={`/auctions/${lot.slug}`}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-line-soft px-4 py-3.5 text-sm transition-colors last:border-0 hover:bg-cream sm:gap-4 sm:px-5"
+                >
+                  <span className="truncate font-medium">{lot.title}</span>
+                  <span className="font-mono text-xs text-muted">
+                    {t.maxLabel} {formatRupiah(Number(b.maxAmount))}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {b.createdAt.toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-14">
+        <Reveal className="mb-5 flex items-end justify-between">
+          <h2 className="font-serif text-2xl">{t.watching}</h2>
+          <Link href="/watchlist" className="link-arrow">
+            {dict.nav.watchlist} <IconArrow size={15} className="arrow" />
+          </Link>
+        </Reveal>
+        {watched.length === 0 ? (
+          <div className="surface-soft p-8 text-center text-sm text-muted-ink">
+            {dict.watch.emptyBody}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {watched.map((lot) => (
+              <LotCard
+                key={lot.id}
+                lot={lot}
+                watching
+                signedIn
+                dict={dict}
+              />
             ))}
           </div>
         )}
       </section>
-      <section>
-        <h2>Won and purchases</h2>
-        {purchases.length === 0 ? (
-          <p className="empty-state">No purchases yet. <Link href="/auctions">Browse open auctions</Link>.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Object</th>
-                <th>Hammer</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Payment by</th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchases.map(order => (
-                <tr key={order.id}>
-                  <td><Link href={`/orders/${order.id}`}>{order.auction.title}</Link></td>
-                  <td>{money(order.winningBid)}</td>
-                  <td>{money(order.total)}</td>
-                  <td>{statusLabel(order.status)}</td>
-                  <td>{formatWhen(order.paymentDeadline)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-      <section>
-        <h2>Notifications</h2>
-        {notifications.length === 0 ? (
-          <p className="empty-state">No notices yet. Outbids, wins and payment reminders will appear here.</p>
-        ) : (
-          <ul className="activity-list">
-            {notifications.map(item => (
-              <li key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p className="muted">{item.message}</p>
-                  {item.href && <Link href={item.href}>Open</Link>}
-                </div>
-                <time dateTime={item.createdAt}>{formatWhen(item.createdAt)}</time>
-                {!item.readAt && <span className="badge">New</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        </>
+      )}
     </div>
+  );
+}
+
+function TabLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+        active
+          ? "border-ink bg-ink text-canvas"
+          : "border-line bg-canvas text-muted-ink hover:border-bronze-soft"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

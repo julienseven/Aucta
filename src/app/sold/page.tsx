@@ -1,55 +1,46 @@
-import type { Metadata } from 'next';
-import type { Auction } from '@/lib/domain';
-import { browseAuctions } from '@/lib/server/marketplace';
-import { Catalogue } from '@/components/pages/catalogue';
-import { catalogueSort, queryValue } from '@/components/pages/helpers';
-import { publicError } from '@/components/pages/protect';
+import type { Metadata } from "next";
+import { CatalogueSection } from "@/components/catalogue/CatalogueSection";
+import { Reveal } from "@/components/Reveal";
+import { ArchiveAnalytics } from "@/components/ArchiveAnalytics";
+import { getDict } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
-  title: 'Price archive',
-  description: 'Explore settled AUCTA lots and the prices the market reached.',
-  alternates: { canonical: '/sold' },
+  title: "Price archive",
+  description:
+    "Settled lots, with the prices the market actually reached. Past results do not predict the next hammer.",
 };
+
+export const dynamic = "force-dynamic";
 
 export default async function SoldPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const q = queryValue(params.q);
-  const category = queryValue(params.category);
-  const condition = queryValue(params.condition);
-  const minPrice = queryValue(params.minPrice);
-  const maxPrice = queryValue(params.maxPrice);
-  const sort = queryValue(params.sort);
-  let auctions: Auction[] = [];
-  let error = '';
-  try {
-    auctions = await browseAuctions({
-      q,
-      category,
-      condition,
-      status: 'sold',
-      minPrice,
-      maxPrice,
-      sort: catalogueSort(sort),
-    });
-  } catch (caught) {
-    error = publicError(caught, 'The price archive could not be loaded. Please try again.');
-  }
+  const sp = await searchParams;
+  const { dict } = await getDict();
 
   return (
-    <Catalogue
-      eyebrow="The market has spoken"
-      title="Price archive"
-      intro="Settled lots, with the prices the market actually reached. Past results do not predict the next hammer."
-      auctions={auctions}
-      values={{ q, category, condition, status: 'sold', minPrice, maxPrice, sort }}
-      error={error}
-      empty="No settled prices to show yet."
-      lockStatus="sold"
-      action="/sold"
-    />
+    <div className="page-enter">
+      <section className="mx-auto w-full max-w-[94rem] px-4 pb-4 pt-10 sm:px-6 lg:px-10 lg:pt-14">
+        <Reveal>
+          <p className="eyebrow">{dict.cata.archiveEyebrow}</p>
+          <h1 className="mt-4 font-serif text-[clamp(2.4rem,6vw,4.2rem)] font-semibold leading-[0.98]">
+            {dict.cata.archiveTitleA}{" "}
+            <span className="serif-italic font-medium">
+              {dict.cata.archiveTitleB}
+            </span>
+          </h1>
+          <p className="lede mt-5 max-w-2xl">{dict.cata.archiveLede}</p>
+        </Reveal>
+      </section>
+
+      <section className="mx-auto w-full max-w-[94rem] px-4 py-6 sm:px-6 lg:px-10">
+        <Reveal>
+          <ArchiveAnalytics />
+        </Reveal>
+        <CatalogueSection searchParams={sp} mode="sold" />
+      </section>
+    </div>
   );
 }

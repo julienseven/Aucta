@@ -1,20 +1,55 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { MARKETPLACE_CONFIG } from '@/lib/config';
-import { PolicyPage } from '@/components/pages/policy';
+import type { Metadata } from "next";
+import { LegalLayout, Prose } from "@/components/LegalLayout";
+import { Reveal } from "@/components/Reveal";
+import { getDict } from "@/lib/i18n/server";
+import { config } from "@/lib/config";
 
-export const metadata: Metadata = { title: 'Seller standards', alternates: { canonical: '/seller-policy' } };
+export const metadata: Metadata = { title: "Seller standards" };
+export const dynamic = "force-dynamic";
 
-export default function SellerPolicyPage() {
-  const sellerFee = MARKETPLACE_CONFIG.sellerFeeBps / 100;
+export default async function Page() {
+  const { dict } = await getDict();
+  const s = dict.legal.seller;
 
   return (
-    <PolicyPage eyebrow="Seller standards" title="Selling on AUCTA">
-      {/* LEGAL_REVIEW_REQUIRED */}
-      <p>Sellers are expected to photograph the object they hold, name obvious flaws, and ship the same object after a paid win. Verification is recorded on the seller profile by AUCTA, not by a self-serve badge.</p>
-      <p>Shill bidding — including bidding on your own lot — is forbidden in the auction rules. Titles, reserves and starting prices must be whole rupiah. Prohibited categories stay off the floor; see <Link href="/prohibited-items">prohibited items</Link>.</p>
-      <p>Current product configuration charges sellers {sellerFee}% of the hammer price. Payout timing, tax invoices and withholding are not specified here. Commission is not a promise that a lot will sell.</p>
-      <p>Listing submission, image upload and seller onboarding are later milestones. This page does not accept applications and does not change your role.</p>
-    </PolicyPage>
+    <LegalLayout
+      eyebrow={s.eyebrow}
+      title={s.title}
+      italicWord={s.italic}
+      lede={s.lede}
+      note={dict.legal.reviewNote}
+      relatedLabel={dict.legal.related}
+      related={[
+        { href: "/prohibited-items", label: dict.nav.prohibited },
+        { href: "/auction-rules", label: dict.nav.howBidding },
+        { href: "/sell", label: dict.nav.becomeSeller },
+      ]}
+    >
+      <Prose>
+        <p>{s.p1}</p>
+        <p>{s.p2}</p>
+      </Prose>
+
+      <Reveal>
+        <div className="surface grid gap-5 p-6 sm:grid-cols-2">
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted">
+              {s.commissionLabel}
+            </p>
+            <p className="mt-2 font-serif text-4xl text-bronze-deep">
+              {config.sellerCommissionBps / 100}%
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {s.commissionOf} {config.sellerCommissionBps}.
+            </p>
+          </div>
+          <div className="text-sm leading-relaxed text-muted-ink">{s.payout}</div>
+        </div>
+      </Reveal>
+
+      <Prose>
+        <p>{s.closing}</p>
+      </Prose>
+    </LegalLayout>
   );
 }

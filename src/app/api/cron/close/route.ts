@@ -1,25 +1,24 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-import { localRequestEnabled, serviceRoleConfigured } from "@/lib/server/runtime";
-import { enforceRateLimit, json, route } from "@/lib/server/http";
-import { ServiceError } from "@/lib/server/errors";
-import { settleDue } from "@/lib/server/mutations";
+import { timingSafeEqual } from "node:crypto";
+import { NextResponse } from "next/server";
+import { activateDueStarts, processDueCloses } from "@/lib/close";
+import { expireUnpaidOrders } from "@/lib/payments/confirm";
 
-function bearerMatches(header: string | null, secret: string) {
-  const token = /^Bearer (.+)$/i.exec(header ?? "")?.[1] ?? "";
-  const provided = createHash("sha256").update(token).digest();
-  const expected = createHash("sha256").update(secret).digest();
-  return timingSafeEqual(provided, expected);
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  const supplied = Buffer.from(req.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret ?? ""}`);
+  if (!secret || secret.length < 32 || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    await activateDueStarts();
+    const closed = await processDueCloses();
+    const expired = await expireUnpaidOrders();
+    return NextResponse.json({ ok: true, closed, expired });
+  } catch {
+    return NextResponse.json({ error: "Closing failed" }, { status: 503 });
+  }
 }
-
-export function POST(request: Request) {
-  return route(async () => {
-    enforceRateLimit("cron-close", 20);
-    const secret = process.env.CRON_SECRET;
-    if (!secret || secret.length < 32) throw new ServiceError("Auction closing is not configured.", 503, "NOT_CONFIGURED");
-    if (!bearerMatches(request.headers.get("authorization"), secret)) throw new ServiceError("Unauthorized.", 401, "UNAUTHENTICATED");
-    if (!localRequestEnabled(request.headers) && !serviceRoleConfigured()) {
-      throw new ServiceError("Auction closing is unavailable without local mode or a configured service role.", 503, "NOT_CONFIGURED");
-    }
-    return json(await settleDue(50));
-  });
-}
+export const POST = GET;

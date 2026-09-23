@@ -1,37 +1,35 @@
-# Auction engine contract
+# AUCTA auction engine contract
 
-## States
+This is the target acceptance contract. The adopted Drizzle application is assessed against it; targets below must not be read as verification claims.
 
-`DRAFT → PENDING_REVIEW → SCHEDULED → LIVE → ENDED → AWAITING_PAYMENT → PAID → FULFILLMENT → COMPLETED`.
+## States and money
 
-Moderation may reject drafts/review submissions; admins may cancel with a reason and audit. Closing without bids or below reserve produces `NO_SALE`. Payment timeout produces `PAYMENT_FAILED`. Eligible orders can enter `DISPUTED` and a controlled resolution can produce `REFUNDED` or resume fulfillment. There is no arbitrary frontend status update API. ENDED is an internal settlement transition committed together with its final outcome.
+Target lifecycle: DRAFT → PENDING_REVIEW → SCHEDULED → LIVE → ENDED → AWAITING_PAYMENT → PAID → FULFILLMENT → COMPLETED. Current source uses its own lowercase lot/order states and must preserve the equivalent transition rules. Closing without a bid or reserve produces no sale. Payment timeout cancels an unpaid order. Moderation, cancellation, dispute and refund transitions require authorized actors and audit evidence.
 
-## Money and increments
+Whole integer IDR only. Increments: below 1m: 25,000; 1m–4,999,999: 50,000; 5m–19,999,999: 100,000; 20m+: 250,000. An auction may override the increment. Seller fee defaults to 700 basis points, buyer fee zero; fee arithmetic and order snapshots must remain consistent.
 
-Whole IDR integers only. Defaults: below 1m: 25,000; 1m–4,999,999: 50,000; 5m–19,999,999: 100,000; 20m+: 250,000. An auction may override its increment. The applicable increment is evaluated at the reference price. Seller fee is 700 basis points; buyer fee 0. Fee rounding is centralized integer arithmetic and snapshotted into orders.
+## Atomic bidding
 
-## Atomic bid processing
+1. Authenticate and reject suspended/unverified bidders and the seller.
+2. Lock the lot row; read database time after locking.
+3. Require live, started and before its end. Validate bounded positive integer maximums and acceptable minimums.
+4. Keep one ceiling per bidder. Each update receives new chronological priority. Requests carry persistent caller-scoped idempotency keys.
+5. Rank maximum descending, chronological priority ascending. With one bidder, start at opening price. With competition, use min(top ceiling, second ceiling + increment(second ceiling)), bounded below by opening/current price. Reserve floors may raise price toward reserve but never beyond the top ceiling.
+6. Equal ceilings favor the earliest equivalent ceiling. Never publish private submitted ceilings as public activity.
+7. Persist visible price, leader, counters, audit and deduplicated notifications atomically. Return only a public snapshot and caller-owned information.
 
-1. Authenticate and reject suspended/unverified-email bidders or the seller.
-2. Lock the auction row `FOR UPDATE`; read database time after acquiring the lock.
-3. Require LIVE, started, and `now < ends_at`. Validate a bounded positive integer maximum and the minimum acceptable bid. A leading bidder can only raise their existing private ceiling.
-4. Store one maximum per bidder. Each ceiling update gets a new chronological priority, so raising to an equal ceiling cannot steal an earlier equal bid. Requests carry an idempotency key.
-5. Rank ceilings descending, priority ascending. The first-ranked bidder leads. With one bidder, price starts at the opening price; with competition it is `min(top_max, second_max + increment(second_max))`, bounded below by the starting/current price. If the winner can meet a hidden reserve, price is at least that reserve but never above their ceiling.
-6. Equal ceilings go to the earliest equivalent maximum. Public activity records visible competitive prices, not submitted private ceilings. Retries cannot add duplicate bids.
-7. Persist current price/leader, counters, risk flags and deduplicated notifications in the same transaction. Return only public snapshot and the caller's own leading/max information.
+## Anti-sniping and closing
 
-## Anti-sniping
+A competitive bid in the last 120 seconds adds 120 seconds to the existing end. Raising an already-leading ceiling alone does not extend the clock. Clients display synchronized time but do not decide eligibility.
 
-A qualifying competitive bid accepted with `ends_at - now <= 120 seconds` adds 120 seconds to the existing end. Raising an already-leading private ceiling alone does not extend or manufacture public bidding activity. Repeated qualifying bids can extend repeatedly. Return an extension flag and authoritative server time. Countdown uses `performance.now()` elapsed time since synchronization, never wall-clock authority.
+A durable scheduler finds due lots. Closing locks the same lot row and rechecks the current deadline/state before creating at most one order or recording no sale. Workloads are bounded and retryable. Closing does not depend on an open browser.
 
-## Closing
+Payment expiry and settlement share an order lock. Expiry may revert a lot only after confirming the order is still unpaid and its deadline has passed. Provider signatures, amounts and event identity must be verified before settlement.
 
-A scheduler finds due live auctions and invokes settlement. Settlement locks the same auction row, rechecks database time/state, and either records NO_SALE or generates one order using unique auction ID and price/fee snapshots. Repeated settlement returns the same result. Closing is independent of any open browser. A batch uses a bounded workload and can be safely retried.
+## Privacy and acceptance
 
-## Withdrawal and privacy
+No self-service withdrawal in V1. Admin cancellation requires reason/audit. Public bidder aliases should be auction-scoped. Never serialize reserves, competing ceilings, auth user IDs, emails or full addresses to catalogue clients.
 
-No self-service bid withdrawal in V1. A controlled admin cancellation requires a reason and audit; cancellation must not silently rerank an ongoing auction. Public bidders have auction-scoped aliases. Never serialize proxy records, reserves, auth user IDs, emails or full addresses to catalogue clients.
+Applied code repairs include private reserve removal from BidPanel props, reserve floors, safe-integer validation, chronological ceiling ordering and locked deadline/status rechecks. Database-time authority, durable idempotency/outbox, scoped aliases and full transition/permission review remain acceptance gaps.
 
-## Required verification
-
-Increment boundaries, equal maxima, leading increases, reserve crossings, rejected bids, extension boundaries, safe fee arithmetic and illegal states. Run actual SQL tests with 10 and 50 competing bids plus 100 near-closing requests; assert one winner/order, monotonic valid price, no late acceptance and no private-field leakage. Report actual results separately from planned cloud acceptance.
+Required real PostgreSQL tests: 10 and 50 competing bids, 100 near-close requests, equivalent maxima, leading raises, reserve crossings, extension boundaries, late rejection, one winner/order, price monotonicity and response privacy. Mocked boundary tests do not demonstrate PostgreSQL lock contention. Document actual results separately from these requirements.

@@ -1,52 +1,118 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { MARKETPLACE_CONFIG } from '@/lib/config';
-import { getCurrentUser } from '@/lib/server/marketplace';
-import { SellerApplyForm } from '@/components/pages/seller-apply-form';
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { getSessionUser } from "@/lib/auth";
+import {
+  getSellerListings,
+  getSellerStats,
+  getSellerTransactionHistory,
+} from "@/lib/seller";
+import { SellerDesk } from "@/components/seller/SellerDesk";
+import { Reveal } from "@/components/Reveal";
+import { IconArrow } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: 'Sell with AUCTA',
-  description: 'Learn how AUCTA reviews sellers and collectible listings before they reach the auction floor.',
-  alternates: { canonical: '/sell' },
+  title: "Seller desk",
+  description: "Draft, submit and track the objects you consign to AUCTA.",
 };
 
+export const dynamic = "force-dynamic";
+
+function weeklySeries(history: { createdAt: Date; hammer: number | bigint }[]) {
+  const weeks: { label: string; value: number }[] = [];
+  const now = new Date();
+  for (let i = 7; i >= 0; i--) {
+    const start = new Date(now);
+    start.setDate(now.getDate() - i * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    const value = history
+      .filter((h) => h.createdAt >= start && h.createdAt < end)
+      .reduce((a, h) => a + Number(h.hammer), 0);
+    weeks.push({
+      label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      value,
+    });
+  }
+  return weeks;
+}
+
 export default async function SellPage() {
-  const user = await getCurrentUser();
-  const sellerFee = MARKETPLACE_CONFIG.sellerFeeBps / 100;
+  const user = await getSessionUser().catch(() => null);
+
+  if (!user) return <Landing />;
+
+  const [listings, stats, history] = await Promise.all([
+    getSellerListings(user.id),
+    getSellerStats(user.id, user),
+    getSellerTransactionHistory(user.id),
+  ]);
+
+  const plain = JSON.parse(
+    JSON.stringify({
+      user: {
+        displayName: user.displayName,
+        alias: user.alias,
+        sellerStatus: user.sellerStatus,
+        sellerCity: user.sellerCity,
+      },
+      listings,
+      stats,
+      history,
+      weeks: weeklySeries(history),
+    }),
+  );
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <p className="eyebrow">Something special in your collection?</p>
-        <h1 className="page-title">Let the right people find it.</h1>
-        <p>AUCTA is an auction floor for considered objects — watches, cameras, cards, sneakers, design, gaming and related lots. A seller desk is where drafts are written and submitted for review. Verification is a server decision, not a badge you assign yourself.</p>
-      </header>
-      <div className="split">
-        <section>
-          <h2>Who it is for</h2>
-          <p>Sellers who can photograph honestly, describe flaws, and ship after the hammer. Opening a desk only asks AUCTA to look; it does not verify you and it does not put an object in the catalogue.</p>
-          <h2>How a sale is meant to run</h2>
-          <p>You consign an object. AUCTA reviews it. If it is scheduled, collectors bid in public increments with private maximums. If it sells, an order is opened with a payment window. You ship. The buyer confirms. Reviews belong to completed trades only.</p>
-        </section>
-        <section>
-          <h2>Current commercial policy</h2>
-          <p>Seller commission is currently {sellerFee}% of the hammer price, stored as {MARKETPLACE_CONFIG.sellerFeeBps} basis points. Buyer fee is currently {MARKETPLACE_CONFIG.buyerFeeBps / 100}%. These figures are product configuration, not a negotiated contract.</p>
-          <p className="legal-note">Requires legal review. Nothing on this page is an offer to consign, a guarantee of sale, or a promise of payout timing.</p>
-          <p>
-            <Link href="/seller-policy">Seller standards</Link> · <Link href="/prohibited-items">Prohibited items</Link> · <Link href="/auction-rules">How bidding works</Link>
+    <div className="page-enter">
+      <SellerDesk
+        user={plain.user}
+        listings={plain.listings}
+        stats={plain.stats}
+        history={plain.history}
+        weeks={plain.weeks}
+      />
+    </div>
+  );
+}
+
+function Landing() {
+  return (
+    <div className="page-enter">
+      <section className="mx-auto grid w-full max-w-[94rem] items-center gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-2 lg:px-10">
+        <Reveal>
+          <p className="eyebrow">Become a seller</p>
+          <h1 className="mt-5 font-serif text-[clamp(2.4rem,6vw,4.4rem)] leading-[0.98]">
+            Let the right people{" "}
+            <span className="serif-italic font-medium">find it</span>.
+          </h1>
+          <p className="lede mt-6 max-w-xl">
+            AUCTA is an auction floor for considered objects. Your seller desk
+            walks you through honest photographs, condition, provenance and
+            pricing — then the market decides.
           </p>
-        </section>
-      </div>
-      {(user?.role === 'seller' || user?.role === 'admin') ? (
-        <p className="page-actions"><Link className="button" href="/selling">Go to your selling desk</Link></p>
-      ) : user ? (
-        <section className="desk-group">
-          <h2>Open a seller desk</h2>
-          <SellerApplyForm />
-        </section>
-      ) : (
-        <p className="page-actions"><Link className="button" href="/sign-in?next=/sell">Sign in to continue</Link></p>
-      )}
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/sign-in?next=/sell" className="btn btn-primary btn-lg">
+              Sign in to your desk <IconArrow size={16} className="arrow" />
+            </Link>
+            <Link href="/seller-policy" className="btn btn-outline btn-lg">
+              Seller standards
+            </Link>
+          </div>
+        </Reveal>
+        <Reveal delay={150}>
+          <div className="grain overflow-hidden rounded-[var(--radius-xl)] border border-line shadow-[var(--shadow-lift)]">
+            <Image
+              src="/images/aucta-design-editorial.png"
+              alt=""
+              width={900}
+              height={760}
+              sizes="(max-width: 1024px) 92vw, 44vw"
+              className="aspect-[7/6] w-full object-cover"
+            />
+          </div>
+        </Reveal>
+      </section>
     </div>
   );
 }

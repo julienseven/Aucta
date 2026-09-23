@@ -1,34 +1,29 @@
 # AUCTA product contract
 
-Rare things. Real prices. An auction-first Indonesian collectible marketplace, English first, IDR only. Watches, cameras, cards, sneakers, gaming, vintage electronics, design and art are in scope. Regulated categories, wallets, crypto, AI valuation and social feeds are excluded.
+Updated 24 September 2026. The user selected `refactor-product-ux-and-motion.zip` as the application version and requested dedicated Supabase and Vercel connections. This supersedes earlier local-only implementation notes. Unrelated Project Arena resources remain out of scope.
 
-## Current state — 21 September 2026
+AUCTA is an auction-first Indonesian collectible marketplace: rare things, real prices. English first, with Bahasa Indonesia UI support, integer IDR only. Watches, cameras, cards, sneakers, gaming, vintage electronics, design and art are in scope. Regulated categories, wallets, crypto, AI valuation and social feeds are excluded. Do not describe AUCTA as escrow.
 
-A working Next.js application now provides the local foundation and auction-core slice. The user chose to keep infrastructure local: development uses PGlite and explicitly labeled, signed local identities restricted to loopback requests. Hosted Supabase authentication, a dedicated cloud project and deployment are deferred and unverified. Unrelated Project Arena infrastructure must not be repurposed.
+## Adopted implementation
 
-Implemented behavior includes catalogue search/filtering, auction detail, database-authoritative proxy bidding, reserve and anti-snipe rules, settlement/order creation, idempotent watchlists, scoped bid polling, and account views. A signed-in collector can apply for a seller desk; a seller can draft a listing, autosave it, and submit it for review. An administrator can approve or reject pending listings and seller applications with a recorded reason. Approved lots enter `SCHEDULED` or `LIVE` and then appear in the catalogue; rejected lots stay out of the catalogue and can be edited and resubmitted. After settlement, the winning buyer can record a mock payment, the seller can enter carrier/tracking, the buyer can confirm receipt and publish a review. SQL is the order of record; no money is collected. Collectors can report listings, participants can dispute paid/shipped orders, and administrators can record report decisions, resume disputed orders, and suspend or restore non-admin accounts with audited reasons. Fictional inventory and a seeded completed order are development fixtures.
+The selected version uses Next.js App Router, React, Tailwind, Drizzle and PostgreSQL. Supabase hosts the database; the application has its own email OTP/magic-link and optional Google authentication, signed sessions and user records. It does not use Supabase Auth. The old PGlite/RPC application and its test results do not describe this version.
 
-An opt-in process-local closer exists; a durable hosted scheduler and multi-connection PostgreSQL concurrency verification remain auction-core acceptance gates. Real payment providers, webhooks, refunds and payouts remain to be built. See HANDOFF.md and ROADMAP.md for the detailed status and verification record.
+Catalogue, auction detail, seller desk, checkout, account, notifications and admin screens exist. Server transaction code handles proxy bids, closing and order creation. These surfaces do not establish launch readiness or prove all authorization and payment transitions safe.
 
-## Target experience
+Production demo seeding, the development inbox and manual payment simulation must remain disabled. The production catalogue starts empty; sample inventory must never appear as genuine merchandise. SMTP delivery and real payment acceptance require configured providers and independent verification.
 
-Discover → watch → bid → compete → win → pay → receive → review. Cream paper, near-black ink and oxblood; editorial serif headings with precise sans-serif controls. Auctions are events, with large object imagery and clear prices, time, provenance and condition. Mobile controls remain usable at 320px. All sample inventory is identified as fictional development data.
+## Target experience and authority
 
-## Routes
-
-`/`, `/auctions`, `/auction/[slug]`, `/sold`, `/sell`, `/watchlist`, `/account`, `/selling`, `/selling/[id]`, `/orders/[id]`, `/admin`, `/sign-in`, auth callbacks and the six policy pages in the brief.
+Discover → watch → bid → compete → win → pay → receive → review. Warm paper, near-black ink and editorial typography. Mobile controls must work at 320px, with keyboard access and reduced-motion support. Winners, reserves, permissions, payment transitions and settlement are server/database authoritative. Never serialize private reserves or competing maximums to client components.
 
 ## Acceptance sequence
 
-This sequence defines the full marketplace acceptance target; it is not a list of completed features.
+1. Establish dedicated deployment/database connectivity and restricted credentials.
+2. Verify authentication, participant/admin permissions and public/private response boundaries.
+3. Prove auction math, concurrency, anti-sniping, idempotency and one-order settlement on real PostgreSQL.
+4. Verify seller onboarding, draft submission, moderation and image handling.
+5. Verify real payment signatures, retries, refunds, payouts, shipping and reviews.
+6. Configure durable closing, monitoring, backup/restore and operational ownership.
+7. Complete browser, accessibility, typecheck, lint, test and production-build acceptance.
 
-0. Freeze this contract, architecture, schema and auction rules.
-1. Install pinned stable Next.js/React/TypeScript/Tailwind, establish Supabase SSR auth, migrations, seed inventory and navigation.
-2. Prove atomic bidding, proxy competition, reserve, extensions, settlement and permissions before advancing transactional workflows.
-3. Seller onboarding, autosaved listings, image upload and review submission.
-4. Audited listing/seller moderation, reports and disputes.
-5. Idempotent order creation, isolated mock payment, manual shipping, receipt and reviews.
-6. Responsive, accessible and editorial polish, metadata and sold archive.
-7. Typecheck, lint, unit/integration/concurrency and browser tests, build, security and deployment audit.
-
-The real cloud two-user flow and deployment cannot be declared verified without dedicated infrastructure and credentials. Local development authentication must be visibly labeled and impossible to enable on a deployed production host.
+See HANDOFF.md and ROADMAP.md for open gates. Connection or deployment success is not marketplace completion.

@@ -1,19 +1,7 @@
-# Environment and local development
+# AUCTA environment
 
-Infrastructure remains local by user instruction. No cloud project, paid service or deployment is provisioned. The separate Project Arena infrastructure is unrelated and must not be modified.
+The adopted application reads `DATABASE_URL` from its server environment. The hosted value points to the AUCTA Supabase transaction pooler with the restricted `aucta_app` database login. Never commit or print its password. The server verifies Supabase's Root 2021 CA from `certs/supabase-prod-ca-2021.crt`. The app uses custom signed sessions, not Supabase Auth.
 
-Install pinned dependencies with `npm.cmd ci`. Copy `.env.example` to `.env.local`, generate a random `LOCAL_AUTH_SECRET` of at least 32 characters, and run `npm.cmd run dev`. Bind the application to the loopback interface. Use the exact `APP_URL` origin in the browser. Local production-build verification is allowed with the same explicit local configuration.
+`AUCTA_SECRET` signs sessions and must be at least 32 random characters. `NEXT_PUBLIC_BASE_URL` must match the deployed HTTPS origin. `AUCTA_DEMO_MODE=true` enables fictional seeds and preview sign-in codes only on non-production localhost. `PAYMENT_PROVIDER=manual` is development-only; production currently uses `disabled`. `MIDTRANS_SERVER_KEY` enables Midtrans only when `PAYMENT_PROVIDER=midtrans`. SMTP requires `SMTP_HOST` and related sender/login values. Without SMTP, hosted email sign-in fails closed.
 
-`AUCTA_LOCAL_MODE=true` enables PGlite and fictional development identities only when `APP_URL` and incoming host headers are loopback addresses. Hosted platform markers and public forwarding headers disable this facility. The application never uses an unsigned cookie, localStorage profile or user-supplied role as identity. The local signed HTTP-only session expires after eight hours. The four development identities exercise buyer, competing buyer, seller and admin workflows; they are not real accounts or production credentials.
-
-The database persists under `.local/aucta-db` by default. Keep `.local/` and `.env.local` out of Git. Set AUCTA_LOCAL_DATA_DIR to a child directory of .local for independent acceptance runs (an empty value uses the default); do not run concurrent application processes against one embedded database directory.
-
-`PAYMENT_PROVIDER=mock` is explicit and local only. No money is collected. Local checkout records mock payments, seller-reported shipments, receipt and reviews in SQL. Seeded completed orders are fictional fixtures, not evidence of a live payment provider.
-
-## Future dedicated Supabase setup
-
-Use a newly authorized AUCTA project. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and a HTTPS `APP_URL`; disable local mode and mock payments. Apply and audit the migrations before exposing the Data API. The app verifies server identity using Supabase Auth and obtains permissions from database records. It never trusts user metadata for authorization. Email OTP/magic-link and optional Google OAuth endpoints use PKCE and a same-origin callback. Configure the exact callback allowlist `/auth/callback`; the token-hash email flow uses `/auth/confirm?token_hash={{ .TokenHash }}&type=email`. Configure SMTP and Google provider credentials in Supabase separately.
-
-Production storage policies, upload scanning, Realtime publication/subscriptions, distributed abuse controls, scheduler, payment provider credentials/webhook signing and payout operations are separate launch gates. The local SQL and browser tests do not verify these cloud services. Missing production configuration returns an explicit unavailable response for protected operations.
-
-`CRON_SECRET` protects `/api/cron/close` using a Bearer token. The route also requires a configured server-only Supabase service role key in hosted mode, or explicit local mode locally. Set `AUCTA_LOCAL_CLOSER=true` to start a process-local 15s `settle_due` loop in `next dev`/`next start`; it is not a durable hosted scheduler. Playwright blanks that flag. Never expose the service key to the client.
+`DISABLE_SCHEDULER=true` disables the process-local interval on Vercel. `CRON_SECRET` secures `/api/cron/close`; an independent production scheduler has not yet been connected. PostgreSQL integration tests use only an explicitly isolated `TEST_DATABASE_URL`. Sample data must never be seeded into production. See DEPLOYMENT.md for project identifiers and launch gates.

@@ -1,39 +1,34 @@
-# Architecture contract
+# AUCTA architecture
 
-## Structure
+Updated 24 September 2026 for the adopted ZIP application.
 
-```text
-src/app/                    Next.js App Router pages, API handlers, metadata
-src/components/             Reusable accessible marketplace interface
-src/lib/domain.ts           Public DTOs (no reserve or competitors' ceilings)
-src/lib/auction/             Pure reference auction rules, money, tests
-src/lib/server/              Server-only repository, sessions, authorization
-src/lib/supabase/            Browser/server clients and session refresh
-src/lib/payments/            Provider contract and isolated mock provider
-src/lib/shipping/            Manual shipment provider contract
-src/lib/config.ts           Fees, currency, timing and locale policies
-supabase/migrations/        Schema, RLS, controlled transactional RPCs
-supabase/seed.sql            Clearly fictional development inventory
-tests/                      Database, concurrency and browser verification
-public/                     Original development object illustrations
-```
+## Runtime
 
-## Authority
+- `src/app/`: Next.js App Router server pages and API handlers.
+- `src/components/`: UI and client interactions; privileged decisions remain on the server.
+- `src/db/schema.ts`: current Drizzle table definitions.
+- `src/db/index.ts`: server PostgreSQL pool using `DATABASE_URL`.
+- `src/lib/auth.ts`, `session-token.ts`: custom authentication and signed sessions.
+- `src/lib/auctions.ts`, `close.ts`: transactional bidding and closing.
+- `src/lib/payments/`: provider integration and settlement/order expiry.
+- `src/app/api/cron/close/route.ts`: authenticated scheduled-work endpoint.
 
-Next.js server components render public catalogue and user-scoped views. Mutations authenticate on the server, validate input, and call database functions. PostgreSQL row locks serialize each auction. Public auction snapshots omit reserve, raw bidder identity and private maximums. Subscriptions only observe an individual auction's sanitized state; the server timestamp synchronizes display timers using a monotonic browser clock.
+This implementation replaces the former PGlite and Supabase RPC application. Historical Supabase migrations describe that earlier model and must not be blindly applied to the current Drizzle database. Supabase Auth, client-side Supabase data access and Realtime are not wired into this application.
 
-Supabase Auth uses email OTP/magic link and optional Google OAuth with PKCE, same-origin redirects, verified server identity and cookie refresh. Authorization comes from protected database records, never user-editable metadata. Seller verification and admin roles are separate from public profiles.
+## Hosted boundary
 
-## Development and production
+Dedicated Supabase project: `edlvglhxsbigsoubdauj`. The server uses a restricted database login. Browser/Data API roles must have no table grants; RLS provides defense in depth. The server login has application privileges, so each handler must independently enforce identity, participant and admin authorization. RLS does not replace those checks for the privileged server connection.
 
-Production uses Supabase PostgreSQL/Auth/Storage/Realtime on Vercel. Local development can use embedded PostgreSQL (PGlite) and explicit seeded development identities to run the same schema/RPC rules when cloud credentials are absent. Local authentication is a test facility, never a production fallback. The application must fail closed for protected operations when production configuration is missing. Local state is persisted outside tracked files; no client localStorage authority for money or permissions.
+Dedicated Vercel project: `aucta`, ID `prj_BVMbN29i6wlwq07UTciF1MCcYhTN`, team `julienseven`. The previous project link was stale/deleted. Never reuse Project Arena infrastructure.
 
-## External providers
+## Transactions
 
-Payment interface: `createPayment`, `getPaymentStatus`, `handleWebhook`, `refundPayment`, `createSellerPayout`, `getPayoutStatus`. Provider-neutral order/payment/payout records use integer IDR, stable idempotency keys and immutable amount snapshots. `PAYMENT_PROVIDER=mock` is explicit and isolated. Webhook verification occurs before state mutation. No wallet or escrow claims. Production provider onboarding remains an external integration.
+Bids lock the lot row, validate eligibility and whole-IDR maximums, rank private ceilings and update the visible snapshot. Closing locks that same row and rechecks its deadline before settlement. Payment expiry locks and rechecks the order so a concurrently settled order cannot revert its lot to unsold. Equal maxima use chronological priority; ceiling raises receive a new priority.
 
-Shipping records carrier/tracking manually; no invented carrier verification. Notifications are deduplicated in-app records with an email outbox/adapter seam. Cron invokes an authenticated server closing endpoint; PostgreSQL rechecks eligibility and settles idempotently. Database scheduling is preferred where the hosting plan cannot supply a sufficient closing cadence.
+Target hardening remains in AUCTION_ENGINE.md: database time, persistent idempotency, bounded jobs, transactional notification outbox, constraints and true multi-connection tests. App-clock checks and process-local request caches are not equivalents.
 
-## Quality gates
+## External dependencies
 
-Typecheck, ESLint, automated tests and production build. Database permission and concurrent bidding tests exercise the actual SQL operations. Browser tests cover the seller-to-review loop in explicit local mode. Cloud auth, Realtime, storage, scheduler and payment provider acceptance are separate launch gates.
+Custom email authentication uses SMTP; optional Google OAuth needs separate application credentials. Midtrans is a provider adapter, not evidence of live payment acceptance. Hosted demo/manual payment fallbacks are disabled. Image storage/upload processing, payment refunds/payouts, distributed abuse controls and durable cron require acceptance work.
+
+Production cannot rely on a process-local timer. `/api/cron/close` accepts authenticated GET/POST requests; its hosted schedule is pending. See DEPLOYMENT.md.

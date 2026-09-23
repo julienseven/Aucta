@@ -1,25 +1,89 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { formatIDR } from '@/lib/auction';
-import { MARKETPLACE_CONFIG } from '@/lib/config';
-import { PolicyPage } from '@/components/pages/policy';
+import type { Metadata } from "next";
+import { LegalLayout, Prose } from "@/components/LegalLayout";
+import { Reveal } from "@/components/Reveal";
+import { getDict } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: 'How bidding works', alternates: { canonical: '/auction-rules' } };
+export const metadata: Metadata = { title: "How bidding works" };
+export const dynamic = "force-dynamic";
 
-export default function AuctionRulesPage() {
-  const extension = MARKETPLACE_CONFIG.extensionWindowMs / 1000;
-  const incrementText = MARKETPLACE_CONFIG.increments
-    .map(tier => (Number.isFinite(tier.below) ? `below ${formatIDR(tier.below)}: ${formatIDR(tier.amount)}` : `otherwise ${formatIDR(tier.amount)}`))
-    .join('; ');
+export default async function Page() {
+  const { dict } = await getDict();
+  const r = dict.legal.rules;
+
+  const increments = [
+    { under: `${r.under} Rp 1.000.000`, step: "Rp 25.000" },
+    { under: `${r.under} Rp 5.000.000`, step: "Rp 50.000" },
+    { under: `${r.under} Rp 20.000.000`, step: "Rp 100.000" },
+    { under: `Rp 20.000.000 ${r.andAbove}`, step: "Rp 250.000" },
+  ];
+
+  const rules = [
+    { h: r.h1, p: r.p1 },
+    { h: r.h2, p: r.p2 },
+    { h: r.h3, p: r.p3 },
+    { h: r.h4, p: r.p4 },
+  ];
 
   return (
-    <PolicyPage eyebrow="The market decides" title="How bidding works">
-      {/* LEGAL_REVIEW_REQUIRED */}
-      <p>AUCTA runs proxy auctions. You submit a private maximum in whole rupiah. The site bids on your behalf up to that ceiling. Other collectors see aliases and the visible price, not your maximum and not anyone else’s.</p>
-      <p>Default increments in current configuration: {incrementText}. An auction may override its increment. The next acceptable bid is decided on the server when the bid is accepted.</p>
-      <p>If a lot has a reserve, the page shows whether that reserve is met. It never shows the reserve amount. A lot that ends below reserve is a no-sale.</p>
-      <p>A qualifying competitive bid in the last {extension} seconds extends the end by {extension} seconds. Raising a ceiling while you already lead does not, by itself, extend the clock. There is no self-service bid withdrawal in this version.</p>
-      <p>Closing is independent of your browser. If you win, an order is opened with snapshotted prices and fees. Read <Link href="/buyer-protection">buyer protection</Link> for payment and disputes. These rules describe intended software behaviour; they are not a complete auction statute.</p>
-    </PolicyPage>
+    <LegalLayout
+      eyebrow={r.eyebrow}
+      title={r.title}
+      italicWord={r.italic}
+      lede={r.lede}
+      note={dict.legal.reviewNote}
+      relatedLabel={dict.legal.related}
+      related={[
+        { href: "/buyer-protection", label: dict.nav.buyerProtection },
+        { href: "/seller-policy", label: dict.nav.sellerStandards },
+        { href: "/prohibited-items", label: dict.nav.prohibited },
+      ]}
+    >
+      <Reveal>
+        <div className="space-y-3">
+          {rules.map((rule, i) => (
+            <div
+              key={rule.h}
+              className="surface flex gap-4 p-5 transition-transform duration-300 hover:translate-x-1"
+            >
+              <span className="medallion medallion-outline shrink-0">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h2 className="font-serif text-lg">{rule.h}</h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-ink">
+                  {rule.p}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="surface overflow-hidden">
+          <p className="border-b border-line px-5 py-3.5 font-semibold">
+            {r.increments}
+          </p>
+          <p className="px-5 pt-3 text-xs text-muted">{r.incrementsNote}</p>
+          <dl className="mt-2">
+            {increments.map((inc, i) => (
+              <div
+                key={inc.under}
+                className={`grid grid-cols-[1fr_auto] gap-4 px-5 py-3 text-sm ${
+                  i !== increments.length - 1 ? "border-b border-line-soft" : ""
+                }`}
+              >
+                <dt className="text-muted-ink">{inc.under}</dt>
+                <dd className="font-mono font-semibold tabular-nums">{inc.step}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </Reveal>
+
+      <Prose>
+        <p>{r.closing}</p>
+      </Prose>
+    </LegalLayout>
   );
 }

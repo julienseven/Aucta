@@ -1,60 +1,17 @@
 # AUCTA
 
-Auction-first Indonesian collectible marketplace. English first. Money is whole integer IDR only.
+Auction-first Indonesian collectibles marketplace. This repository now uses the product UX and motion version supplied as `refactor-product-ux-and-motion.zip` on 24 September 2026.
 
-This repository is local-only. There is no dedicated AUCTA Supabase project or Vercel deployment. Do not reuse Project Arena infrastructure.
+## Stack and boundaries
 
-## Local setup
+Next.js 16, React 19, Drizzle and PostgreSQL. The dedicated Supabase project (`edlvglhxsbigsoubdauj`) hosts the database; AUCTA uses its own email-code/magic-link sessions and server-side database access, not Supabase Auth or a browser Supabase client. The dedicated Vercel project is `aucta` (`prj_BVMbN29i6wlwq07UTciF1MCcYhTN`). Supabase project data is accessed through a restricted `aucta_app` login over the transaction pooler and a verified TLS certificate. Browser Data API roles have no table grants.
 
-1. Copy `.env.example` to `.env.local`.
-2. Set:
+## Development
 
-```
-AUCTA_LOCAL_MODE=true
-APP_URL=http://localhost:3000
-LOCAL_AUTH_SECRET=<at least 32 characters>
-PAYMENT_PROVIDER=mock
-```
+Use Node 22 and `npm.cmd ci`. Provide `DATABASE_URL`, a random `AUCTA_SECRET` of at least 32 characters, and `NEXT_PUBLIC_BASE_URL`. `.env.example` lists other settings. Demo inventory, preview sign-in codes, and manual payments require `AUCTA_DEMO_MODE=true` on a non-hosted local development server with `PAYMENT_PROVIDER=manual`. Production leaves both disabled.
 
-3. Install and run on Windows:
+Run `npm.cmd run dev`; then `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd test`, and `npm.cmd run build`. PostgreSQL mutation tests require an explicitly isolated `TEST_DATABASE_URL`; they never run against `DATABASE_URL` automatically.
 
-```
-npm.cmd ci
-npm.cmd run dev
-```
+## Current launch status
 
-The app binds to loopback (`127.0.0.1:3000`). Open the exact `APP_URL` origin (`http://localhost:3000`). Do not tunnel or reverse-proxy local mode.
-
-Keep `.env.local` and `.local/` out of Git. The embedded database defaults to `.local/aucta-db`.
-
-## Local identities
-
-Fictional development identities only. Not real accounts or production credentials. Available solely in explicit local mode on loopback.
-
-| Key | Role | Display | Email |
-| --- | --- | --- | --- |
-| `buyer` | Buyer | Nadia | `buyer@aucta.local` |
-| `rival` | Competing buyer | Aditya | `competitor@aucta.local` |
-| `seller` | Seller | Raka Studio | `seller@aucta.local` |
-| `admin` | Admin | Admin | `admin@aucta.local` |
-
-All sample inventory is fictional development data.
-
-`PAYMENT_PROVIDER=mock` collects no money. Checkout and payment persistence are not connected yet; completed seed orders are fictional fixtures.
-
-## Commands
-
-```
-npm.cmd run typecheck
-npm.cmd run lint
-npm.cmd run test
-npm.cmd run build
-```
-
-Local production-build verification uses the same explicit local configuration (`npm.cmd run start` after `build`).
-
-## Current status and verification
-
-Read [HANDOFF.md](HANDOFF.md) before continuing implementation. The working local foundation includes seller drafts/submit and audited listing/seller moderation. Checkout-to-review is not implemented.
-
-Run `npm.cmd run test:e2e` for browser regressions. It builds an isolated localhost:3100 server, uses installed Google Chrome, and creates a fresh `.local/e2e-*` database. Your default `.local/aucta-db` is preserved. Set `AUCTA_LOCAL_DATA_DIR` only to a child of `.local` when running other independent local instances. Restart the server after adding SQL migrations.
+The interface, server routes, and database tables are present. Hosted sign-in requires SMTP; real checkout requires Midtrans credentials and independent webhook verification. The Hobby Vercel plan cannot provide an auction closing cadence through its cron alone, so an external durable scheduler is required before live bidding. Uploaded inventory, provider settlement/refunds, negative permission tests, load tests, and end-to-end buyer/seller acceptance remain launch gates. See [DEPLOYMENT.md](DEPLOYMENT.md) and [HANDOFF.md](HANDOFF.md).

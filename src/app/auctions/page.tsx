@@ -1,57 +1,39 @@
-import type { Metadata } from 'next';
-import type { Auction } from '@/lib/domain';
-import { browseAuctions } from '@/lib/server/marketplace';
-import { Catalogue } from '@/components/pages/catalogue';
-import { catalogueSort, catalogueStatus, queryValue } from '@/components/pages/helpers';
-import { publicError } from '@/components/pages/protect';
+import type { Metadata } from "next";
+import { CatalogueSection } from "@/components/catalogue/CatalogueSection";
+import { Reveal } from "@/components/Reveal";
+import { getDict } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
-  title: 'Auctions',
-  description: 'Browse live and upcoming collectible auctions on AUCTA.',
-  alternates: { canonical: '/auctions' },
+  title: "Auctions",
+  description:
+    "Live, upcoming and recently decided lots. Watches, cameras, cards, sneakers, design, gaming and more.",
 };
+
+export const dynamic = "force-dynamic";
 
 export default async function AuctionsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const q = queryValue(params.q);
-  const category = queryValue(params.category);
-  const condition = queryValue(params.condition);
-  const status = queryValue(params.status);
-  const minPrice = queryValue(params.minPrice);
-  const maxPrice = queryValue(params.maxPrice);
-  const sort = queryValue(params.sort);
-  let auctions: Auction[] = [];
-  let error = '';
-  try {
-    auctions = await browseAuctions({
-      q,
-      category,
-      condition,
-      status: catalogueStatus(status),
-      minPrice,
-      maxPrice,
-      sort: catalogueSort(sort),
-    });
-    if (!status || status === 'all') {
-      auctions = auctions.filter(item => item.status === 'LIVE' || item.status === 'SCHEDULED');
-    }
-  } catch (caught) {
-    error = publicError(caught, 'The catalogue could not be loaded. Please try again.');
-  }
+  const sp = await searchParams;
+  const { dict } = await getDict();
 
   return (
-    <Catalogue
-      eyebrow="Open bidding"
-      title="The auctions"
-      intro="Live, upcoming and recently decided lots. Filters stay in the address bar, so a view can be shared."
-      auctions={auctions}
-      values={{ q, category, condition, status, minPrice, maxPrice, sort }}
-      error={error}
-      empty="Nothing matches this view. Try another category or clear the filters."
-    />
+    <div className="page-enter">
+      <section className="mx-auto w-full max-w-[94rem] px-4 pb-4 pt-10 sm:px-6 lg:px-10 lg:pt-14">
+        <Reveal>
+          <p className="eyebrow">{dict.cata.eyebrow}</p>
+          <h1 className="mt-4 font-serif text-[clamp(2.4rem,6vw,4.2rem)] font-semibold leading-[0.98]">
+            {dict.cata.title}
+          </h1>
+          <p className="lede mt-5 max-w-2xl">{dict.cata.lede}</p>
+        </Reveal>
+      </section>
+
+      <section className="mx-auto w-full max-w-[94rem] px-4 py-6 sm:px-6 lg:px-10">
+        <CatalogueSection searchParams={sp} mode="open" />
+      </section>
+    </div>
   );
 }

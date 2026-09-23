@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790088287083,
+      "tag": "0000_integrity_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790094069384,
+      "tag": "0001_checkout_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790185785220,
+      "tag": "0002_server_database_access",
+      "breakpoints": true
+    }
+  ]
+}

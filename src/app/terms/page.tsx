@@ -1,17 +1,35 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { PolicyPage } from '@/components/pages/policy';
+import type { Metadata } from "next";
+import { LegalLayout, Prose } from "@/components/LegalLayout";
+import { getDict } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: 'Terms', alternates: { canonical: '/terms' } };
+export const metadata: Metadata = { title: "Terms of use" };
+export const dynamic = "force-dynamic";
 
-export default function TermsPage() {
+export default async function Page() {
+  const { dict } = await getDict();
+  const p = dict.legal.terms;
+
   return (
-    <PolicyPage eyebrow="House rules" title="Terms of use">
-      {/* LEGAL_REVIEW_REQUIRED */}
-      <p>AUCTA is an online auction marketplace for collectible objects, presented in English, with prices in Indonesian rupiah. It is not a bank, wallet, crypto venue, broker-dealer or escrow company.</p>
-      <p>Using the site means you can browse public lots. Bidding, watching, buying and selling require a signed-in account. Server records, not the browser, decide who is leading, whether a reserve is met, who won, and whether an order exists.</p>
-      <p>These notes describe how the product is built to behave. They are not a complete consumer contract, not a waiver, and not a limitation of statutory rights. Counsel must review them before they are treated as binding terms.</p>
-      <p>Related pages: <Link href="/privacy">Privacy</Link>, <Link href="/auction-rules">How bidding works</Link>, <Link href="/buyer-protection">Buyer protection</Link>, <Link href="/seller-policy">Seller standards</Link>, <Link href="/prohibited-items">Prohibited items</Link>.</p>
-    </PolicyPage>
+    <LegalLayout
+      eyebrow={p.eyebrow}
+      title={p.title}
+      italicWord={p.italic}
+      lede={p.lede}
+      note={dict.legal.reviewNote}
+      relatedLabel={dict.legal.related}
+      related={[
+        { href: "/privacy", label: dict.footer.privacy },
+        { href: "/auction-rules", label: dict.nav.howBidding },
+        { href: "/buyer-protection", label: dict.nav.buyerProtection },
+        { href: "/seller-policy", label: dict.nav.sellerStandards },
+        { href: "/prohibited-items", label: dict.nav.prohibited },
+      ]}
+    >
+      <Prose>
+        <p>{p.p1}</p>
+        <p>{p.p2}</p>
+        <p>{p.p3}</p>
+      </Prose>
+    </LegalLayout>
   );
 }

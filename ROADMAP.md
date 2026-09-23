@@ -1,16 +1,15 @@
 # AUCTA roadmap
 
-See HANDOFF.md for the exact current implementation, audit fixes, verified checks and next tasks. Keep infrastructure local by user instruction.
+The user selected `refactor-product-ux-and-motion.zip` on 24 September 2026. The former local PGlite/RPC milestone history describes a different implementation.
 
-| Milestone | State |
-| --- | --- |
-| M0 — Contract freeze | Defined in PRODUCT.md, ARCHITECTURE.md, DATABASE.md and AUCTION_ENGINE.md. |
-| M1 — Foundation | Working local foundation; hosted Supabase Auth is deferred and unverified. |
-| M2 — Auction core | SQL/reference rules, local sessions, watchlists and scoped polling implemented. Opt-in process-local closer exists. Durable hosted scheduler and true multi-connection PostgreSQL concurrency remain acceptance gates. |
-| M3 — Seller flow | Implemented locally. Onboarding, drafts, autosave and submit exist; lots remain PENDING_REVIEW until an admin decision. |
-| M4 — Moderation | Listing/seller decisions, report review, dispute pause/resume and non-admin suspension/restoration implemented locally with audited SQL decisions. |
-| M5 — Transaction loop | Implemented locally. Idempotent SQL settlement plus mock pay, manual ship, receipt and review mutations. Disputes resume their exact previous state. Payouts stay pending; real providers and refunds are not connected. |
-| M6 — Polish | Partial: editorial responsive UI, catalogue, auction detail and sold archive. |
-| M7 — Launch audit | Local regression coverage exists; production acceptance and a live payment provider are incomplete. |
+The selected Next.js/Drizzle version is connected to a dedicated Supabase database and Vercel project. Production demo inventory, preview email inbox, and manual payment simulation are disabled. The public catalogue begins empty. The app uses custom authentication over PostgreSQL, not Supabase Auth.
 
-Next acceptance work is real PostgreSQL multi-connection verification when a local runtime is available, plus independent accessibility review. Hosted scheduler and cloud/provider integration remain separate gates under the local-only decision. Seeded completed orders do not replace the SQL and browser mutation tests.
+Next acceptance work, in order:
+
+1. Verify deployed health, TLS database connection and a two-user sign-in flow after configuring SMTP.
+2. Add real, reviewed inventory and test seller, admin and buyer permissions, including negative cases, on hosted PostgreSQL.
+3. Provide a durable scheduler fast enough for auction close and payment expiry; Vercel Hobby cron cadence is insufficient.
+4. Configure and test real Midtrans payment/webhook, refunds and payout handling. No payment flow is live while `PAYMENT_PROVIDER=disabled`.
+5. Complete hosted bid/close contention, privacy, abuse-rate and browser accessibility tests, then operational monitoring and backup/restore review.
+
+See HANDOFF.md for verified results and unresolved risks. Do not mark the marketplace complete from the UI alone.

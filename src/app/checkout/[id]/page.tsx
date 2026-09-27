@@ -95,6 +95,10 @@ export default async function CheckoutPage({
   );
 
   const gateway = process.env.PAYMENT_PROVIDER === "midtrans" ? "midtrans" : "manual";
+  const checkoutSnapshot = order.snapshot as {
+    checkout?: { standardShipping?: number };
+    money?: { shipping?: number };
+  } | null;
 
   return (
     <div className="page-enter mx-auto w-full max-w-[94rem] px-4 py-10 sm:px-6 lg:px-10">
@@ -112,8 +116,8 @@ export default async function CheckoutPage({
           order={plain}
           gateway={gateway}
           shippingQuote={Number(
-            (order.snapshot as { money?: { shipping?: number } } | null)?.money
-              ?.shipping ?? lot.shippingCost,
+            checkoutSnapshot?.checkout?.standardShipping ??
+            checkoutSnapshot?.money?.shipping ?? lot.shippingCost,
           )}
           lotSlug={lot.slug}
         />

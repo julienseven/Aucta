@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { activateDueStarts, processDueCloses } from "@/lib/close";
 import { expireUnpaidOrders } from "@/lib/payments/confirm";
+import { reconcilePendingPayments } from "@/lib/payments/reconcile";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,8 +16,10 @@ export async function GET(req: Request) {
   try {
     await activateDueStarts();
     const closed = await processDueCloses();
+    const reconciled = process.env.PAYMENT_PROVIDER === "midtrans"
+      ? await reconcilePendingPayments() : 0;
     const expired = await expireUnpaidOrders();
-    return NextResponse.json({ ok: true, closed, expired });
+    return NextResponse.json({ ok: true, closed, reconciled, expired });
   } catch {
     return NextResponse.json({ error: "Closing failed" }, { status: 503 });
   }

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { logger } from "@/lib/logger";
 import type {
   CreatePaymentInput,
@@ -34,11 +34,12 @@ function authHeader(serverKey: string): string {
   return "Basic " + Buffer.from(`${serverKey}:`).toString("base64");
 }
 
-function mapStatus(t: string): WebhookResult["status"] {
+function mapStatus(t: string, fraud?: string): WebhookResult["status"] {
   switch (t) {
     case "settlement":
+      return !fraud || fraud === "accept" ? "paid" : "pending";
     case "capture":
-      return "paid";
+      return fraud === "accept" ? "paid" : "pending";
     case "pending":
       return "pending";
     case "deny":
@@ -49,11 +50,36 @@ function mapStatus(t: string): WebhookResult["status"] {
     case "cancel":
       return "cancelled";
     case "refund":
-    case "partial_refund":
       return "refunded";
     default:
       return "pending";
   }
+}
+
+function parseAmount(value: unknown): number | null {
+  const text = String(value ?? "");
+  if (!/^\d+(?:\.00)?$/.test(text)) return null;
+  const amount = Number(text);
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
+
+function parseStatus(body: Record<string, unknown>, signatureVerified: boolean): WebhookResult | null {
+  const orderNumber = String(body.order_id ?? "");
+  const amount = parseAmount(body.gross_amount);
+  if (!orderNumber || amount === null ||
+      (body.currency && body.currency !== "IDR")) return null;
+  const status = mapStatus(String(body.transaction_status ?? ""), String(body.fraud_status ?? ""));
+  if (status === "paid" && String(body.status_code) !== "200") return null;
+  return {
+    provider: "midtrans",
+    providerRef: String(body.transaction_id ?? orderNumber),
+    orderNumber,
+    status,
+    amount,
+    method: String(body.payment_type ?? "midtrans"),
+    raw: body,
+    signatureVerified,
+  };
 }
 
 /* Midtrans signature: sha512(order_id + status_code + gross_amount + serverKey) */
@@ -76,7 +102,7 @@ export function verifySignature(params: {
   const a = Buffer.from(expected);
   const b = Buffer.from(params.signature_key);
   if (a.length !== b.length) return false;
-  return a.equals(b);
+  return timingSafeEqual(a, b);
 }
 
 export const midtransProvider: PaymentProvider = {
@@ -102,13 +128,8 @@ export const midtransProvider: PaymentProvider = {
         finish: `${input.returnUrl}?order=${encodeURIComponent(input.order.number)}`,
       },
       expiry: {
-        start_time: new Date().toISOString().replace("Z", "+00:00"),
-        unit: "hours",
-        duration: 24,
-      },
-      page_expiry: {
-        duration: 1440,
         unit: "minutes",
+        duration: Math.max(1, Math.floor(((input.order.paymentExpiresAt?.getTime() ?? 0) - Date.now()) / 60_000)),
       },
     };
 
@@ -162,16 +183,7 @@ export const midtransProvider: PaymentProvider = {
       return null;
     }
 
-    return {
-      provider: "midtrans",
-      providerRef: String(body.transaction_id ?? order_id),
-      orderNumber: order_id,
-      status: mapStatus(String(body.transaction_status ?? "pending")),
-      amount: Math.round(Number.parseFloat(gross_amount.replace(/,/g, "")) || 0),
-      method: String(body.payment_type ?? "midtrans"),
-      raw: body,
-      signatureVerified: true,
-    };
+    return parseStatus(body, true);
   },
 
   async getStatus(providerRef: string) {
@@ -182,8 +194,15 @@ export const midtransProvider: PaymentProvider = {
         headers: { Authorization: authHeader(cfg.serverKey), Accept: "application/json" },
       });
       if (!res.ok) return null;
-      const data = await res.json();
-      return mapStatus(String(data.transaction_status));
+      const data = await res.json() as Record<string, unknown>;
+      if (String(data.order_id ?? "") !== providerRef) return null;
+      const verified = verifySignature({
+        order_id: String(data.order_id ?? ""),
+        status_code: String(data.status_code ?? ""),
+        gross_amount: String(data.gross_amount ?? ""),
+        signature_key: String(data.signature_key ?? ""),
+      });
+      return verified ? parseStatus(data, true) : null;
     } catch {
       return null;
     }
@@ -191,17 +210,22 @@ export const midtransProvider: PaymentProvider = {
 
   async refund(providerRef: string, amount: number): Promise<boolean> {
     const cfg = config();
-    if (!cfg.serverKey) return false;
+    if (!cfg.serverKey || !Number.isSafeInteger(amount) || amount <= 0) return false;
     try {
-      const res = await fetch(`${cfg.core}/v2/refund/${encodeURIComponent(providerRef)}`, {
+      const res = await fetch(`${cfg.core}/v2/${encodeURIComponent(providerRef)}/refund`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: authHeader(cfg.serverKey),
         },
-        body: JSON.stringify({ amount, reason: "AUCTA dispute resolution" }),
+        body: JSON.stringify({
+          refund_key: `AUCTA-REFUND-${providerRef.replace(/[^A-Za-z0-9_-]/g, "-")}`,
+          amount,
+          reason: "AUCTA dispute resolution",
+        }),
       });
-      return res.ok;
+      const result = await res.json().catch(() => ({}));
+      return res.ok && String(result.status_code ?? "") === "200";
     } catch (err) {
       logger.error("midtrans_refund_failed", { error: String(err) });
       return false;

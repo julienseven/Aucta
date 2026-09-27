@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/db";
 import { bidEvents, lots, orders, paymentAttempts } from "@/db/schema";
-import { and, desc, eq, lte, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, ne, notExists } from "drizzle-orm";
 import { canTransition } from "@/lib/order-math";
 import { notify } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
@@ -43,6 +43,8 @@ export async function confirmSettlement(
     if (order.status === "cancelled" || order.status === "refunded") {
       return { ok: false, reason: "ORDER_TERMINAL" };
     }
+    if (order.status !== "awaiting_payment")
+      return { ok: false, reason: "INVALID_STATE" };
 
     // Server-side amount verification: never accept an underpayment silently.
     if (!Number.isSafeInteger(s.amount) || Number(order.amountDue) !== s.amount) {
@@ -53,6 +55,14 @@ export async function confirmSettlement(
       });
       return { ok: false, reason: "AMOUNT_MISMATCH" };
     }
+
+    const [attempt] = await tx.select().from(paymentAttempts)
+      .where(and(eq(paymentAttempts.orderId, order.id), eq(paymentAttempts.provider, s.provider)))
+      .orderBy(desc(paymentAttempts.createdAt)).limit(1);
+    if (!attempt || !["pending", "failed"].includes(attempt.status) ||
+        attempt.providerRef !== s.orderNumber || attempt.amount !== s.amount ||
+        (s.provider === "midtrans" && !s.signatureVerified))
+      return { ok: false, reason: "ATTEMPT_MISMATCH" };
 
     await tx
       .update(orders)
@@ -69,36 +79,15 @@ export async function confirmSettlement(
       .where(eq(orders.id, order.id));
 
     // Record/verify the gateway attempt.
-    const attempts = await tx
-      .select()
-      .from(paymentAttempts)
-      .where(eq(paymentAttempts.orderId, order.id))
-      .orderBy(desc(paymentAttempts.createdAt))
-      .limit(1);
-    if (attempts[0]) {
-      await tx
-        .update(paymentAttempts)
-        .set({
-          status: "paid",
-          providerRef: s.providerRef ?? attempts[0].providerRef,
-          signatureVerified: Boolean(s.signatureVerified),
-          verifiedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(paymentAttempts.id, attempts[0].id));
-    } else {
-      await tx.insert(paymentAttempts).values({
-        orderId: order.id,
-        provider: s.provider,
-        providerRef: s.providerRef ?? s.orderNumber,
-        method: s.method ?? "bank_transfer",
-        amount: s.amount,
+    await tx
+      .update(paymentAttempts)
+      .set({
         status: "paid",
         signatureVerified: Boolean(s.signatureVerified),
         verifiedAt: new Date(),
-        raw: s.raw ?? {},
-      });
-    }
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentAttempts.id, attempt.id));
 
     // Notifications are queued after commit; return ids and the caller fires them.
     await tx.insert(bidEvents).values({
@@ -154,9 +143,15 @@ export async function expireUnpaidOrders(now = new Date()) {
       and(
         eq(orders.status, "awaiting_payment"),
         lte(orders.paymentExpiresAt, now),
+        notExists(db.select({ id: paymentAttempts.id }).from(paymentAttempts).where(and(
+          eq(paymentAttempts.orderId, orders.id),
+          eq(paymentAttempts.provider, "midtrans"),
+          inArray(paymentAttempts.status, ["pending", "paid"]),
+        ))),
       ),
     )
-    .for("update", { skipLocked: true });
+    .orderBy(asc(orders.paymentExpiresAt))
+    .limit(25);
 
   let expiredCount = 0;
   for (const order of due) {
@@ -165,6 +160,11 @@ export async function expireUnpaidOrders(now = new Date()) {
         .where(eq(orders.id, order.id)).for("update");
       if (!current || current.status !== "awaiting_payment" ||
           !current.paymentExpiresAt || current.paymentExpiresAt.getTime() > now.getTime()) return false;
+      const [gatewayAttempt] = await tx.select().from(paymentAttempts)
+        .where(and(eq(paymentAttempts.orderId, current.id), eq(paymentAttempts.provider, "midtrans")))
+        .orderBy(desc(paymentAttempts.createdAt)).limit(1);
+      if (gatewayAttempt && !["expired", "cancelled", "failed"].includes(gatewayAttempt.status))
+        return false;
       await tx
         .update(orders)
         .set({
@@ -227,27 +227,27 @@ export async function markOrderRefunded(
   orderId: string,
   refund: { amount?: number; reason?: string; ref?: string } = {},
 ) {
-  const rows = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-  const order = rows[0];
-  if (!order) return { ok: false };
-  if (!canTransition(order.status, "refunded")) return { ok: false, reason: "INVALID_STATE" };
+  return db.transaction(async (tx) => {
+    const [order] = await tx.select().from(orders)
+      .where(eq(orders.id, orderId)).limit(1).for("update");
+    if (!order) return { ok: false };
+    if (!canTransition(order.status, "refunded"))
+      return { ok: false, reason: "INVALID_STATE" };
+    const amount = refund.amount ?? Number(order.paidAmount);
+    if (!Number.isSafeInteger(amount) || amount !== Number(order.paidAmount))
+      return { ok: false, reason: "AMOUNT_MISMATCH" };
 
-  const amount = refund.amount ?? Number(order.amountDue);
-  await db
-    .update(orders)
-    .set({
+    await tx.update(orders).set({
       status: "refunded",
+      statusReason: null,
       refundedAt: new Date(),
       refundAmount: amount,
       refundReason: refund.reason ?? null,
       refundRef: refund.ref ?? null,
-    })
-    .where(eq(orders.id, orderId));
-  await db
-    .update(paymentAttempts)
-    .set({ status: "refunded", updatedAt: new Date() })
-    .where(and(eq(paymentAttempts.orderId, orderId), ne(paymentAttempts.status, "refunded")));
-  return { ok: true, order };
+    }).where(eq(orders.id, orderId));
+    await tx.update(paymentAttempts)
+      .set({ status: "refunded", updatedAt: new Date() })
+      .where(and(eq(paymentAttempts.orderId, orderId), ne(paymentAttempts.status, "refunded")));
+    return { ok: true, order };
+  });
 }
-
-void ne;

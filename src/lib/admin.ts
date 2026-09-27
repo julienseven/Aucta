@@ -7,6 +7,7 @@ import {
   disputes,
   lots,
   orders,
+  paymentAttempts,
   reports,
   users,
   type LotRow,
@@ -434,10 +435,24 @@ export async function performAdminAction(
       break;
     }
     case "dismiss_payment": {
-      await db
-        .update(orders)
-        .set({ status: "cancelled", cancelledAt: new Date(), statusReason: reason ?? "cancelled by desk" })
-        .where(eq(orders.id, id));
+      await db.transaction(async (tx) => {
+        const [order] = await tx.select().from(orders).where(eq(orders.id, id)).for("update");
+        if (!order || order.status !== "awaiting_payment")
+          throw new Error("Only an unpaid order can be dismissed.");
+        const [activeGateway] = await tx.select().from(paymentAttempts).where(and(
+          eq(paymentAttempts.orderId, id),
+          eq(paymentAttempts.provider, "midtrans"),
+          eq(paymentAttempts.status, "pending"),
+        )).limit(1);
+        if (activeGateway)
+          throw new Error("Verify and cancel the pending gateway transaction first.");
+        await tx.update(orders).set({
+          status: "cancelled", cancelledAt: new Date(),
+          statusReason: reason ?? "cancelled by desk",
+        }).where(eq(orders.id, id));
+        await tx.update(lots).set({ status: "unsold", soldAmount: null })
+          .where(eq(lots.id, order.lotId));
+      });
       await log(admin, action, "order", id, reason);
       break;
     }
@@ -448,40 +463,24 @@ export async function performAdminAction(
         .where(eq(orders.id, id))
         .limit(1);
       if (!ord) break;
+      if (!ord.paidAmount || !ord.paymentRef ||
+          !["paid", "preparing", "shipped", "delivered", "completed", "disputed"].includes(ord.status))
+        throw new Error("Order is not eligible for a gateway refund.");
+      if (ord.refundRef) break;
       const amount = Number(ord.paidAmount ?? ord.amountDue);
-      // Best-effort gateway refund; record it either way for reconciliation.
-      let gatewayRef: string | null = null;
-      try {
-        const { getPaymentProvider } = await import("@/lib/payments");
-        const provider = getPaymentProvider();
-        if (provider.refund && ord.paymentRef) {
-          const ok = await provider.refund(ord.paymentRef, amount);
-          if (ok) gatewayRef = `gw:${ord.paymentRef}`;
-        }
-      } catch {
-        /* offline/manual refund recorded */
-      }
+      const { getPaymentProvider } = await import("@/lib/payments");
+      const provider = getPaymentProvider();
+      if (provider.key !== ord.paymentProvider || !provider.refund ||
+          !(await provider.refund(ord.paymentRef, amount)))
+        throw new Error("Gateway refund was not accepted.");
+      const gatewayRef = `gw:${ord.paymentRef}`;
       await db
         .update(orders)
         .set({
-          status: "refunded",
-          refundedAt: new Date(),
-          refundAmount: amount,
-          refundReason: reason ?? "Desk resolution",
+          statusReason: "refund_requested",
           refundRef: gatewayRef,
         })
         .where(eq(orders.id, id));
-      if (ord.buyerId) {
-        await notify({
-          userId: ord.buyerId,
-          type: "dispute_update",
-          title: `Refund issued for "${ord.lotTitle}"`,
-          body: reason ?? "The desk issued a refund for this order.",
-          link: "/account?tab=orders",
-          lotId: ord.lotId,
-          dedupeKey: `refund:${ord.id}`,
-        });
-      }
       await log(admin, action, "order", id, reason, { amount, gatewayRef });
       break;
     }

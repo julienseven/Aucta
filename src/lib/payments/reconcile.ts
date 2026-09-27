@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/db";
 import { bidEvents, lots, orders, paymentAttempts } from "@/db/schema";
-import { and, desc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lte } from "drizzle-orm";
 import { getPaymentProvider } from "@/lib/payments";
 import {
   confirmSettlement,
@@ -25,7 +25,7 @@ export async function reconcilePendingPayments(): Promise<number> {
         eq(paymentAttempts.provider, "midtrans"),
       ),
     )
-    .orderBy(desc(paymentAttempts.createdAt))
+    .orderBy(asc(paymentAttempts.createdAt))
     .limit(25);
 
   let n = 0;
@@ -53,18 +53,21 @@ export async function reconcilePendingPayments(): Promise<number> {
       continue;
     }
 
-    const gateway = await provider.getStatus(attempt.providerRef ?? order.number);
-    if (gateway === "paid") {
-      await confirmSettlement({
+    const gateway = await provider.getStatus(order.number);
+    if (gateway?.status === "paid") {
+      const settled = await confirmSettlement({
         orderNumber: order.number,
         provider: "midtrans",
-        providerRef: attempt.providerRef ?? order.number,
-        method: attempt.method,
-        amount: Number(order.amountDue),
-        signatureVerified: true,
+        providerRef: gateway.providerRef,
+        method: gateway.method,
+        amount: gateway.amount,
+        signatureVerified: gateway.signatureVerified,
       });
-      n++;
-    } else if (gateway === "expired" || gateway === "cancelled") {
+      if (settled.ok) n++;
+    } else if (gateway?.status === "expired" || gateway?.status === "cancelled") {
+      await db.update(paymentAttempts).set({
+        status: gateway.status, updatedAt: new Date(),
+      }).where(and(eq(paymentAttempts.id, attempt.id), eq(paymentAttempts.status, "pending")));
       await expireUnpaidOrders();
     }
   }

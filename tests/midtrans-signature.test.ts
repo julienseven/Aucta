@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { verifySignature } from "@/lib/payments/midtrans";
+import { midtransProvider, verifySignature } from "@/lib/payments/midtrans";
 
 const SERVER_KEY = "SB-Mid-server-test";
 
@@ -49,5 +49,47 @@ describe("midtrans webhook signature", () => {
         signature_key: "whatever",
       }),
     ).toBe(false);
+  });
+
+  function notification(fields: Record<string, unknown> = {}) {
+    const body = {
+      order_id: "AUCT-20260922-ABC123",
+      transaction_id: "gateway-transaction-1",
+      status_code: "200",
+      gross_amount: "20045000.00",
+      transaction_status: "settlement",
+      fraud_status: "accept",
+      currency: "IDR",
+      ...fields,
+    };
+    return new Request("http://localhost/api/payments/midtrans/webhook", {
+      method: "POST",
+      body: JSON.stringify({
+        ...body,
+        signature_key: signatureFor(body.order_id, body.status_code, body.gross_amount),
+      }),
+    });
+  }
+
+  it("parses a verified whole-IDR settlement with its gateway reference", async () => {
+    process.env.MIDTRANS_SERVER_KEY = SERVER_KEY;
+    const result = await midtransProvider.parseWebhook(notification());
+    expect(result).toMatchObject({
+      status: "paid",
+      amount: 20_045_000,
+      providerRef: "gateway-transaction-1",
+      orderNumber: "AUCT-20260922-ABC123",
+      signatureVerified: true,
+    });
+  });
+
+  it("holds challenged card captures and rejects fractional IDR", async () => {
+    process.env.MIDTRANS_SERVER_KEY = SERVER_KEY;
+    expect((await midtransProvider.parseWebhook(notification({
+      transaction_status: "capture", fraud_status: "challenge",
+    })))?.status).toBe("pending");
+    expect(await midtransProvider.parseWebhook(notification({
+      gross_amount: "20045000.50",
+    }))).toBeNull();
   });
 });

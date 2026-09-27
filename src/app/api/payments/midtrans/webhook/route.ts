@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { orders, paymentAttempts } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { getPaymentProvider } from "@/lib/payments";
 import {
   confirmSettlement,
@@ -30,6 +30,16 @@ export async function POST(req: Request) {
     logger.warn("webhook_unknown_order", { order: result.orderNumber });
     return NextResponse.json({ ok: true });
   }
+  const order = orderRows[0];
+  const [attempt] = await db.select().from(paymentAttempts).where(and(
+    eq(paymentAttempts.orderId, order.id),
+    eq(paymentAttempts.provider, "midtrans"),
+    eq(paymentAttempts.providerRef, result.orderNumber),
+  )).limit(1);
+  if (!attempt || attempt.amount !== result.amount || order.currency !== "IDR") {
+    logger.warn("webhook_attempt_mismatch", { order: result.orderNumber });
+    return NextResponse.json({ error: "payment mismatch" }, { status: 409 });
+  }
 
   switch (result.status) {
     case "paid": {
@@ -47,20 +57,27 @@ export async function POST(req: Request) {
     }
     case "expired":
     case "cancelled":
+      await db.update(paymentAttempts).set({
+        status: result.status, updatedAt: new Date(),
+      }).where(and(eq(paymentAttempts.id, attempt.id), eq(paymentAttempts.status, "pending")));
       await expireUnpaidOrders();
       break;
     case "failed":
       await db
-        .update(orders)
-        .set({ status: "payment_failed", statusReason: "gateway_denied" })
-        .where(eq(orders.id, orderRows[0].id));
+        .update(paymentAttempts)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(and(eq(paymentAttempts.id, attempt.id), eq(paymentAttempts.status, "pending")));
       break;
     case "refunded":
-      await markOrderRefunded(orderRows[0].id, {
-        amount: result.amount,
-        ref: result.providerRef,
-        reason: "Gateway refund",
-      });
+      if (order.status !== "refunded" &&
+          Number(result.raw.refund_amount) === Number(order.paidAmount) &&
+          order.paymentRef === String(result.raw.transaction_id ?? "")) {
+        await markOrderRefunded(order.id, {
+          amount: Number(order.paidAmount),
+          ref: result.providerRef,
+          reason: "Gateway refund",
+        });
+      }
       break;
   }
 

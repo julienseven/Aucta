@@ -44,7 +44,7 @@ export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   parseWebhook(req: Request): Promise<WebhookResult | null>;
   /** Reconcile a pending attempt by provider order id. */
-  getStatus?(providerRef: string): Promise<GatewayStatus | null>;
+  getStatus?(providerRef: string): Promise<WebhookResult | null>;
   /** Issue a refund where the gateway supports it. */
   refund?(providerRef: string, amount: number, reason?: string): Promise<boolean>;
 }

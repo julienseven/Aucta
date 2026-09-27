@@ -9,3 +9,9 @@ The Vercel production environment has `DATABASE_URL`, `AUCTA_SECRET`, `CRON_SECR
 The deployment must remain a non-transactional preview until SMTP delivery, a real Midtrans integration, a durable close/expiry scheduler, real inventory, and end-to-end two-user/provider acceptance are complete. Vercel Hobby cron cannot meet this auction's close cadence. The authenticated `/api/cron/close` route is available for a suitable scheduler but no production schedule is configured. Do not claim automatic closing while it is absent.
 
 Use `npm.cmd ci`, typecheck, lint, PostgreSQL integration tests using an isolated database/schema, and build before deploying. Then verify `/api/health`, catalogue behavior, unauthenticated write denial, and production logs. Live payment and SMTP secrets should be set only when the corresponding providers have been configured and tested.
+
+## Midtrans sandbox progress — 28 September 2026
+
+The registered Aucta merchant's **sandbox** server key is stored only in the ignored local `.env.local`. A read-only status request authenticated successfully, and a synthetic Rp10,000 Snap transaction returned a sandbox checkout token. The application code now locks and reuses one checkout attempt per order, verifies signed whole-IDR payment status against that attempt, reconciles pending payments before expiry, and waits for confirmed gateway refunds before recording them complete. Checkout and expiry transitions were exercised against the isolated `aucta_test` PostgreSQL schema.
+
+The hosted `PAYMENT_PROVIDER` remains disabled. No Midtrans notification URL, hosted sandbox key, real buyer checkout, refund, or payout has been verified. A durable close/expiry scheduler and SMTP are still required before live transactions. Do not set `MIDTRANS_IS_PRODUCTION=true` or enable hosted payments based on the sandbox token test alone.

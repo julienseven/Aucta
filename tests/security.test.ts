@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getIdempotent,
+  isSameOriginRequest,
   rateLimit,
   safeRedirect,
   setIdempotent,
@@ -20,6 +21,23 @@ describe("safeRedirect", () => {
   it("falls back safely", () => {
     expect(safeRedirect(null, "/auctions")).toBe("/auctions");
     expect(safeRedirect("", "/")).toBe("/");
+  });
+});
+
+describe("same-origin request guard", () => {
+  const request = (origin?: string) => new Request("https://aucta.example/api/admin", {
+    method: "POST",
+    headers: origin ? { origin } : undefined,
+  });
+
+  it("allows matching serialized origins", () => {
+    expect(isSameOriginRequest(request("https://aucta.example"))).toBe(true);
+  });
+  it("rejects hostile, malformed, and missing origins", () => {
+    expect(isSameOriginRequest(request("https://evil.example"))).toBe(false);
+    expect(isSameOriginRequest(request("null"))).toBe(false);
+    expect(isSameOriginRequest(request("https://aucta.example/path"))).toBe(false);
+    expect(isSameOriginRequest(request())).toBe(false);
   });
 });
 

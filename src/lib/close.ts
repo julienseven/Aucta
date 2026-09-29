@@ -11,7 +11,7 @@ import {
   watchlist,
   type LotRow,
 } from "@/db/schema";
-import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { formatRupiah } from "@/lib/format";
 import { notify, notifyMany } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
@@ -31,11 +31,14 @@ const CLOSE_BATCH_SIZE = 25;
 
 /* Finalizes one bounded batch of due auctions. Repeated scheduler calls drain
    the backlog. The transaction locks and rechecks each lot before closing. */
-export async function processDueCloses(now = new Date()): Promise<CloseResult> {
+export async function processDueCloses(nowOverride?: Date): Promise<CloseResult> {
   const due = await db
     .select()
     .from(lots)
-    .where(and(eq(lots.status, "live"), lte(lots.endsAt, now)))
+    .where(and(
+      eq(lots.status, "live"),
+      nowOverride ? lte(lots.endsAt, nowOverride) : sql`${lots.endsAt} <= clock_timestamp()`,
+    ))
     .orderBy(asc(lots.endsAt), asc(lots.id))
     .limit(CLOSE_BATCH_SIZE);
 
@@ -50,7 +53,15 @@ export async function processDueCloses(now = new Date()): Promise<CloseResult> {
         .where(eq(lots.id, lot.id))
         .for("update", { skipLocked: true });
       const current = locked[0];
-      if (!current || current.status !== "live" || current.endsAt.getTime() > now.getTime()) return;
+      if (!current || current.status !== "live") return;
+      // Recheck against PostgreSQL time after locking; an extended lot or
+      // application-host clock skew must not close an auction early.
+      const now = nowOverride ?? (await tx
+        .select({ now: sql<Date>`clock_timestamp()` })
+        .from(lots)
+        .where(eq(lots.id, current.id))
+        .limit(1))[0].now;
+      if (current.endsAt.getTime() > now.getTime()) return;
 
       const topBids = await tx
         .select()
@@ -216,7 +227,7 @@ export async function processDueCloses(now = new Date()): Promise<CloseResult> {
 }
 
 /* Promotes one bounded batch of scheduled lots when their start hits. */
-export async function activateDueStarts(now = new Date()): Promise<LotRow[]> {
+export async function activateDueStarts(nowOverride?: Date): Promise<LotRow[]> {
   const due = await db
     .select()
     .from(lots)
@@ -224,7 +235,7 @@ export async function activateDueStarts(now = new Date()): Promise<LotRow[]> {
       and(
         eq(lots.stage, "published"),
         eq(lots.status, "upcoming"),
-        lte(lots.startsAt, now),
+        nowOverride ? lte(lots.startsAt, nowOverride) : sql`${lots.startsAt} <= clock_timestamp()`,
       ),
     )
     .orderBy(asc(lots.startsAt), asc(lots.id))
@@ -235,7 +246,12 @@ export async function activateDueStarts(now = new Date()): Promise<LotRow[]> {
     const activatedRow = await db
       .update(lots)
       .set({ status: "live" })
-      .where(and(eq(lots.id, lot.id), eq(lots.stage, "published"), eq(lots.status, "upcoming"), lte(lots.startsAt, now)))
+      .where(and(
+        eq(lots.id, lot.id),
+        eq(lots.stage, "published"),
+        eq(lots.status, "upcoming"),
+        nowOverride ? lte(lots.startsAt, nowOverride) : sql`${lots.startsAt} <= clock_timestamp()`,
+      ))
       .returning({ id: lots.id });
     if (!activatedRow.length) continue;
     activated.push(lot);

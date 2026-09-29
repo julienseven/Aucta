@@ -15,6 +15,19 @@ export function safeRedirect(
   return value;
 }
 
+/* Require a serialized Origin matching the request URL for browser mutations. */
+export function isSameOriginRequest(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin || origin === "null") return false;
+
+  try {
+    const parsedOrigin = new URL(origin);
+    return parsedOrigin.origin === origin && parsedOrigin.origin === new URL(req.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 /* -------------------- In-memory sliding-window rate limiter -------------------- */
 type Hit = { count: number; resetAt: number };
 const buckets = new Map<string, Hit>();

@@ -107,10 +107,17 @@ export async function placeBid(
     if (lot.ownerId && lot.ownerId === user.id)
       throw new BidError(403, "SELF_BID", "Sellers cannot bid on their own lots.");
 
-    const now = Date.now();
-    if (new Date(lot.startsAt).getTime() > now)
+    // Use the database clock after taking the lot lock so bid eligibility is
+    // consistent with scheduler queries, even when app hosts have clock skew.
+    const [{ now }] = await tx
+      .select({ now: sql<Date>`clock_timestamp()` })
+      .from(lots)
+      .where(eq(lots.id, lot.id))
+      .limit(1);
+    const nowMs = now.getTime();
+    if (new Date(lot.startsAt).getTime() > nowMs)
       throw new BidError(409, "NOT_OPEN", "This auction has not opened yet.");
-    if (lot.status !== "live" || new Date(lot.endsAt).getTime() <= now)
+    if (lot.status !== "live" || new Date(lot.endsAt).getTime() <= nowMs)
       throw new BidError(409, "CLOSED", "This auction is already closed.");
 
     const max = Math.floor(rawMax);
@@ -163,7 +170,7 @@ export async function placeBid(
        Raising a ceiling while already leading does not, and a sole bidder
        cannot trigger an extension against nobody. */
     extended = shouldExtend({
-      now,
+      now: nowMs,
       endsAt: currentEnd,
       wasLeading,
       hasOpponent: Boolean(topOther),
@@ -171,7 +178,7 @@ export async function placeBid(
     });
 
     // The lot lock serializes priorities, including bids in the same millisecond.
-    const priorityAt = new Date(Math.max(now, ...historyRows.map((b) => b.createdAt.getTime() + 1)));
+    const priorityAt = new Date(Math.max(nowMs, ...historyRows.map((b) => b.createdAt.getTime() + 1)));
     if (myExisting) {
       await tx
         .update(bids)

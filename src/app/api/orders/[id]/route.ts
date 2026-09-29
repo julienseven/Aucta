@@ -191,17 +191,27 @@ export async function POST(
   }
 
   // complete: buyer release; increments seller's successful-sales metric.
-  await db.transaction(async (tx) => {
+  const completion = await db.transaction(async (tx) => {
+    const lockedRows = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, id))
+      .for("update")
+      .limit(1);
+    const lockedOrder = lockedRows[0];
+    if (!lockedOrder || !canTransition(lockedOrder.status, "completed"))
+      return { completed: false, status: lockedOrder?.status ?? null };
+
     await tx
       .update(orders)
       .set({ status: "completed", completedAt: new Date() })
-      .where(eq(orders.id, id));
+      .where(eq(orders.id, lockedOrder.id));
     await tx.insert(bidEvents).values({
       lotId: lot.id,
       lotSlug: lot.slug,
       type: "order_completed",
-      amount: Number(order.hammerAmount),
-      meta: { orderNumber: order.number },
+      amount: Number(lockedOrder.hammerAmount),
+      meta: { orderNumber: lockedOrder.number },
     });
     if (lot.ownerId) {
       await tx
@@ -215,7 +225,19 @@ export async function POST(
         })
         .where(eq(users.id, lot.ownerId));
     }
+    return { completed: true, status: "completed" };
   });
+  if (!completion.completed)
+    return NextResponse.json(
+      {
+        error: completion.status
+          ? `Can't move from ${completion.status} to completed.`
+          : "Order not found.",
+        code: completion.status ? "STATE" : "NOT_FOUND",
+      },
+      { status: completion.status ? 409 : 404 },
+    );
+
   if (lot.ownerId)
     await notify({
       userId: lot.ownerId,

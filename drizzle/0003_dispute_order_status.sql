@@ -1,0 +1,1 @@
+ALTER TABLE "disputes" ADD COLUMN "order_status_before_dispute" text;

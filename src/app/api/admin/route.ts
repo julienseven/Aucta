@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { performAdminAction, isAdmin, type AdminAction } from "@/lib/admin";
+import { isSameOriginRequest } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ const ACTIONS: AdminAction[] = [
 ];
 
 export async function POST(req: Request) {
+  if (!isSameOriginRequest(req))
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+
   const user = await getSessionUser().catch(() => null);
   if (!isAdmin(user))
     return NextResponse.json({ error: "Desk access required." }, { status: 403 });

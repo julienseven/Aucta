@@ -384,26 +384,47 @@ export async function performAdminAction(
       break;
     }
     case "resolve_dispute": {
-      const [dispute] = await db
-        .select()
-        .from(disputes)
-        .where(eq(disputes.id, Number(id)))
-        .limit(1);
-      await db
-        .update(disputes)
-        .set({
-          status: "resolved",
-          resolution: resolution ?? reason ?? null,
-          resolvedBy: admin.id,
-          resolvedAt: new Date(),
-        })
-        .where(eq(disputes.id, Number(id)));
-      if (dispute?.orderId) {
-        await db
-          .update(orders)
-          .set({ status: "shipped" })
-          .where(eq(orders.id, dispute.orderId));
-      }
+      const dispute = await db.transaction(async (tx) => {
+        const [current] = await tx
+          .select()
+          .from(disputes)
+          .where(eq(disputes.id, Number(id)))
+          .limit(1)
+          .for("update");
+        if (!current || current.status !== "open")
+          throw new Error("Open dispute not found.");
+
+        if (current.orderId) {
+          const [order] = await tx
+            .select()
+            .from(orders)
+            .where(and(eq(orders.id, current.orderId), eq(orders.lotId, current.lotId)))
+            .limit(1)
+            .for("update");
+          const previousStatus = current.orderStatusBeforeDispute;
+          if (
+            order?.status === "disputed" &&
+            previousStatus &&
+            ["paid", "preparing", "shipped", "delivered", "completed"].includes(previousStatus)
+          ) {
+            await tx
+              .update(orders)
+              .set({ status: previousStatus })
+              .where(and(eq(orders.id, order.id), eq(orders.status, "disputed")));
+          }
+        }
+
+        await tx
+          .update(disputes)
+          .set({
+            status: "resolved",
+            resolution: resolution ?? reason ?? null,
+            resolvedBy: admin.id,
+            resolvedAt: new Date(),
+          })
+          .where(and(eq(disputes.id, current.id), eq(disputes.status, "open")));
+        return current;
+      });
       if (dispute?.openedById) {
         await notify({
           userId: dispute.openedById,

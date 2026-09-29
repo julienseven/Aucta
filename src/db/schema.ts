@@ -443,6 +443,7 @@ export const disputes = pgTable(
     id: bigserial("id", { mode: "number" }).primaryKey(),
     orderId: uuid("order_id").references(() => orders.id, { onDelete: "cascade" }),
     lotId: uuid("lot_id").notNull(),
+    orderStatusBeforeDispute: text("order_status_before_dispute"),
     openedById: uuid("opened_by_id"),
     openedByAlias: text("opened_by_alias"),
     reason: text("reason").notNull(),

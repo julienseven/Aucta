@@ -27,15 +27,17 @@ export type CloseResult = {
   unsold: string[];
 };
 
-/* Finalizes every live auction whose end time has passed.
-   Idempotent: only status='live' rows are selected (row-locked) and flipped
-   once; repeated invocations cannot create duplicate orders. */
+const CLOSE_BATCH_SIZE = 25;
+
+/* Finalizes one bounded batch of due auctions. Repeated scheduler calls drain
+   the backlog. The transaction locks and rechecks each lot before closing. */
 export async function processDueCloses(now = new Date()): Promise<CloseResult> {
   const due = await db
     .select()
     .from(lots)
     .where(and(eq(lots.status, "live"), lte(lots.endsAt, now)))
-    .for("update", { skipLocked: true });
+    .orderBy(asc(lots.endsAt), asc(lots.id))
+    .limit(CLOSE_BATCH_SIZE);
 
   const result: CloseResult = { sold: [], unsold: [] };
 
@@ -46,7 +48,7 @@ export async function processDueCloses(now = new Date()): Promise<CloseResult> {
         .select()
         .from(lots)
         .where(eq(lots.id, lot.id))
-        .for("update");
+        .for("update", { skipLocked: true });
       const current = locked[0];
       if (!current || current.status !== "live" || current.endsAt.getTime() > now.getTime()) return;
 
@@ -213,7 +215,7 @@ export async function processDueCloses(now = new Date()): Promise<CloseResult> {
   return result;
 }
 
-/* Promotes scheduled (upcoming, published) lots to live when their start hits. */
+/* Promotes one bounded batch of scheduled lots when their start hits. */
 export async function activateDueStarts(now = new Date()): Promise<LotRow[]> {
   const due = await db
     .select()
@@ -225,14 +227,17 @@ export async function activateDueStarts(now = new Date()): Promise<LotRow[]> {
         lte(lots.startsAt, now),
       ),
     )
-    .for("update", { skipLocked: true });
+    .orderBy(asc(lots.startsAt), asc(lots.id))
+    .limit(CLOSE_BATCH_SIZE);
 
   const activated: LotRow[] = [];
   for (const lot of due) {
-    await db
+    const activatedRow = await db
       .update(lots)
       .set({ status: "live" })
-      .where(and(eq(lots.id, lot.id), eq(lots.status, "upcoming")));
+      .where(and(eq(lots.id, lot.id), eq(lots.stage, "published"), eq(lots.status, "upcoming"), lte(lots.startsAt, now)))
+      .returning({ id: lots.id });
+    if (!activatedRow.length) continue;
     activated.push(lot);
 
     // Saved searches and followed-seller alerts.

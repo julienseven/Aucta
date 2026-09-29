@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ rows: [] as unknown[][], writes: 0 }));
+const state = vi.hoisted(() => ({ rows: [] as unknown[][], writes: 0, limits: [] as number[] }));
 vi.mock("@/db", () => {
   function select() {
     const rows = state.rows.shift() ?? [];
     const query: Record<string, unknown> = {};
-    for (const method of ["from", "where", "for", "limit", "orderBy"]) query[method] = () => query;
+    for (const method of ["from", "where", "for", "orderBy"]) query[method] = () => query;
+    query.limit = (size: number) => { state.limits.push(size); return query; };
     query.then = (resolve: (value: unknown[]) => unknown) => Promise.resolve(rows).then(resolve);
     return query;
   }
@@ -26,7 +27,13 @@ import { confirmSettlement, expireUnpaidOrders } from "@/lib/payments/confirm";
 
 describe("transaction eligibility rechecks", () => {
   const now = new Date("2026-09-24T12:00:00Z");
-  beforeEach(() => { state.rows = []; state.writes = 0; });
+  beforeEach(() => { state.rows = []; state.writes = 0; state.limits = []; });
+
+  it("closes at most one bounded batch per scheduler call", async () => {
+    state.rows = [[]];
+    expect(await processDueCloses(now)).toEqual({ sold: [], unsold: [] });
+    expect(state.limits).toEqual([25]);
+  });
 
   it("does not close a lot extended since the candidate scan", async () => {
     state.rows = [[{ id: "lot" }], [{ id: "lot", status: "live", endsAt: new Date(now.getTime() + 120_000) }]];
